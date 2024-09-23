@@ -1,0 +1,17 @@
+for(int i = 0; i < 10; i++) 
+{}
+if(numero == 10) 
+{}
+else {}
+else if(circulo < 16) 
+{}
+else
+if
+for
+return
+956
+Hola
+tx_2v    5
+@fd
+return number;
+3x

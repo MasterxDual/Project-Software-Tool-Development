@@ -1,0 +1,10 @@
+int x = 0; 
+int y, z, w, o, p;
+while(y > 0) {
+    int y = 0;
+    y = y - 1;
+    while(var1 == var2) {
+        int a, b, c;
+        y = y * y;
+    }
+}
