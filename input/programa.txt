@@ -1,10 +1,20 @@
 int x = 0; 
-int y, z, w, o, p;
+int y, z, w, o;
+int a = b - c * 10;
+int d = 1, b = c, d;
+
 while(y > 0) {
     int y = 0;
     y = y - 1;
     while(var1 == var2) {
         int a, b, c;
         y = y * y;
+    }
+}
+
+for(y = 0; y < 10; y++) {
+    for(x = 10; x >= 10; --x) {
+        x = x + 5;
+        y = x + 1;
     }
 }
