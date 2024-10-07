@@ -2,7 +2,7 @@ import sys
 from antlr4 import *
 from compiladoresLexer  import compiladoresLexer
 from compiladoresParser import compiladoresParser
-
+from TheListener import TheListener
 
 def main(argv):
     archivo = "input/programa.txt"
@@ -12,7 +12,9 @@ def main(argv):
     lexer = compiladoresLexer(input)
     stream = CommonTokenStream(lexer)
     parser = compiladoresParser(stream)
-    tree = parser.programa()
+    listen = TheListener()
+    parser.addParseListener(listen)
+    tree = parser.program()
     #print(tree.toStringTree(recog=parser))
 
 if __name__ == '__main__':
