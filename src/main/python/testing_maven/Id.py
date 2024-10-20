@@ -8,8 +8,8 @@ class DataType(Enum):
 
 class Id(ABC):
     def __init__(self, name: str, data_type: DataType):
-        self.name = name
-        self.data_type = data_type
+        self._name = name
+        self._data_type = data_type
         self.initialized = False
         self.used = False
 
@@ -21,7 +21,7 @@ class Id(ABC):
     #Getter of attribute name
     @property
     def name(self) -> str:
-        return self.name
+        return self._name
 
     """
     @name.setter defines a setter, which allows you to modify an 
@@ -29,10 +29,14 @@ class Id(ABC):
     These decorators (@property and @name.setter) provide encapsulation 
     and validation, which improves code robustness without sacrificing simplicity of use.
     """
+    @name.setter
+    def name(self, value: str):
+        self._name = value
+
     #Getter of attribute data_type
     @property
     def data_type(self) -> DataType:
-        return self.data_type
+        return self._data_type
 
     def is_initialized(self) -> bool:
         return self.initialized
