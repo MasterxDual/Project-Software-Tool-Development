@@ -1,0 +1,4 @@
+int var = 0, var2, var3;
+while(x) {
+    int y = 0;
+}

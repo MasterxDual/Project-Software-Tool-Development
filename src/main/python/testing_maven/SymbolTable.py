@@ -62,4 +62,7 @@ class SymbolTable:
                 return _id
         return None
     
+    def __str__(self):
+        return "\n".join(str(context) for context in self.contexts)
+    
     

@@ -10,3 +10,6 @@ class Context:
 
     def search(self, name: str) -> Id:
         return self.tabla.get(name)
+    
+    def __str__(self):
+        return f"Context with identifiers: {list(self.tabla.keys())}"
