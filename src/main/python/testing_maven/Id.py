@@ -3,9 +3,10 @@ from abc import ABC, abstractmethod #ABC: abstract base class
 
 class DataType(Enum):
     INT = 1
-    DOUBLE = 2
+    FLOAT = 2
     CHAR = 3
-    VOID = 4
+    DOUBLE = 4
+    VOID = 5
 
 class Id(ABC):
     def __init__(self, name: str, data_type: DataType):
