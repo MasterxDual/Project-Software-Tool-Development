@@ -39,20 +39,24 @@ class TheListener(compiladoresListener):
         for _ in range(len(self.variablesStack)):
             self.instance_symbol_table.add_identifier(Variable(self.variablesStack.pop(), DataType[data_type]))
 
-
     def exitVarlist(self, ctx: compiladoresParser.VarlistContext):
         if(ctx.getChildCount() != 0):
             self.variablesStack.append(ctx.getChild(1).getText())
             
-    #def enterWhilei(self, ctx:compiladoresParser.WhileiContext):
-    #    print("Encontre while")
-    #    print("\tCantidad hijos: " + str(ctx.getChildCount()))
-    #    print("\tTokens: " + ctx.getText())
+    def enterWhilei(self, ctx:compiladoresParser.WhileiContext):
+        print("Encontre while")
 
-    #def exitWhilei(self, ctx:compiladoresParser.WhileiContext):
-    #    print("Fin del while")
-    #    print("\tCantidad hijos: " + str(ctx.getChildCount()))
-    #    print("\tTokens: " + ctx.getText()) """
+    def exitWhilei(self, ctx:compiladoresParser.WhileiContext):
+        print("Fin del while")
+        #print(ctx.getChild(2).getText())
+        #self.instance_symbol_table.add_identifier(Variable())
+        #print("\tCantidad hijos: " + str(ctx.getChildCount()))
+        #print("\tTokens: " + ctx.getText()) """
+
+    def exitFactor(self, ctx:compiladoresParser.FactorContext):
+        if ctx.ID() and self.instance_symbol_table.global_search(ctx.getChild(0).getText()) is None: 
+            print("Error: El identificador no ha sido declarado previamente")
+        
 
     def visitTerminal(self, node: TerminalNode):
         print(" ---> Token: " + node.getText())
