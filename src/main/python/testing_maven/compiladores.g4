@@ -38,9 +38,9 @@ INC: '++';
 DEC: '--';
 
 //Logical operations
-NOT: '!';
-AND: '&&';
-OR: '||';
+LNOT: '!';
+LAND: '&&';
+LOR: '||';
 
 
 //Variable data types
@@ -59,6 +59,20 @@ FOR: 'for';
 ELSE: 'else';
 RETURN: 'return';
 
+//Bitwise operators
+AND: '&';
+OR: '|';
+NOT: '~';
+XOR: '^';
+
+//Special symbols
+ATSIGN: '@';
+NUMERATOR: '#';
+MONETARY: '$';
+COLON: ':';
+QUOTE: '"';
+QUESTION: '?';  
+BACKSLIDE: '\\';
 
 ID : (LETTER | '_')(LETTER | DIGIT | '_')* ;
 
@@ -86,6 +100,7 @@ instructions: instruction instructions
             ;
 
 //instruction: INST {print($INST.text[:-1])};
+
 
 instruction: declaration SEMI
             | assignment SEMI
@@ -130,13 +145,13 @@ opal: oplogic;
 //Logical operations
 oplogic: logic lor;
 
-lor: OR logic lor //Logical operator OR
+lor: LOR logic lor //Logical operator OR
     |
     ;
 
 logic: set land;
 
-land: AND set land //Logical AND operator
+land: LAND set land //Logical AND operator
     |
     ;
 
@@ -180,7 +195,7 @@ t: MULT factor t
 factor: NUMBER 
       | ID
       | LPAR oplogic RPAR //He knows he has to figure this out first because of the depth of the tree.
-      | NOT factor
+      | LNOT factor
       ;
 
 //While loop
