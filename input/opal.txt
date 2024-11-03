@@ -10,19 +10,3 @@ while(x) {
 
 x = !a > b && c == d || e != f;
 
-
-
-//Esto va en test.txt luego
-while(var < x) {
-    int y = 0;
-}
-
-int x = 10;
-int y = 5;
-char z = 62;
-x = y;  
-
-
-if(x == z) {
-    x = x + 1;
-}
