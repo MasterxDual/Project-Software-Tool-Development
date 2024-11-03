@@ -40,11 +40,17 @@ class Id(ABC):
     def data_type(self) -> DataType:
         return self._data_type
 
-    def is_initialized(self) -> bool:
-        return self.initialized
+    def set_initialized(self) -> bool:
+        self.initialized = True
 
     def set_used(self):
         self.used = True
+
+    def get_initialized(self):
+        return self.initialized
+
+    def get_used(self):
+        return self.used
 
     @abstractmethod
     def get_type(self) -> str:
