@@ -11,5 +11,8 @@ class Context:
     def search(self, name: str) -> Id:
         return self.tabla.get(name)
     
+    def get_identifiers(self) -> dict:
+        return self.tabla
+    
     def __str__(self):
         return f"Context with identifiers: {list(self.tabla.keys())}"
