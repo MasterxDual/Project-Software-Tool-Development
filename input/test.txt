@@ -1,4 +1,22 @@
 int var = 0, var2, var3;
-while(x) {
+
+//Esto va en test.txt luego
+while(var < x) {
     int y = 0;
 }
+
+int x = 10;
+int y = 5;
+char z = 62;
+x = y;  
+
+
+if(x == z) {
+    x = x + 1;
+}
+
+
+
+
+
+
