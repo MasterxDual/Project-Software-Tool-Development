@@ -17,6 +17,7 @@ class TheListener(compiladoresListener):
     warnings = [] #Lista para almacenar advertencias encontradas
     actual_function = None # Para rastrear la funcion actual
     stack_arguments = [] # Lista para almacenar los argumentos que espera una funcion
+    #stack_incompatible_types = [] #Pila para almacenar los ids que pueden ser tipos de datos incompatibles
 
     def bugReport(self, ctx, type_error:str, message:str):
         """
@@ -108,9 +109,9 @@ class TheListener(compiladoresListener):
         # Recorremos el contexto actual en busca de ID no inicializados y/o usados
         for variable in contexts[-1].get_identifiers().values():
             if variable.get_initialized() is False: # Si no esta inicializado
-                self.warningReport(ctx, f"La variable '{variable.obtenerNombre()}' no fue inicialzada")
+                self.warningReport(ctx, f"La variable '{variable.name}' no fue inicialzada")
             if variable.get_used() is False: # Si no esta usado
-                self.warningReport(ctx, f"La variable '{variable.obtenerNombre()}' no fue usada")
+                self.warningReport(ctx, f"La variable '{variable.name}' no fue usada")
 
         self.symbol_table.del_context() # Borra el contexto actual
 
@@ -247,6 +248,10 @@ class TheListener(compiladoresListener):
         """
         if ctx.ID(): # Si el factor es un ID 
             identifier = self.symbol_table.global_search(ctx.getChild(0).getText()) # Busca el ID en la tabla de símbolos
+            #id_name = ctx.getChild(0).getText()
+            #suspicious_incompatible_id = self.symbol_table.local_search(id_name)
+            #if suspicious_incompatible_id:
+            #    self.stack_incompatible_types.append(suspicious_incompatible_id) # Agrega el ID a la pila de tipos de datos incompatibles
             if identifier is None:
                 # Notifica el uso de un ID sin declarar
                 self.bugReport(ctx, "Semantico", f"El identificador '{ctx.getChild(0).getText()}' no esta definido")
