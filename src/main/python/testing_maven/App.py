@@ -1,3 +1,6 @@
+#https://github.com/MasterxDual
+#https://github.com/MasterxDual/Project-Software-Tool-Development
+
 import sys
 from antlr4 import *
 from compiladoresLexer  import compiladoresLexer
