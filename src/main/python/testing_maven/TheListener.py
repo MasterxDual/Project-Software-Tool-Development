@@ -5,6 +5,7 @@ from SymbolTable import SymbolTable
 from Id import DataType
 from Variable import Variable
 from Context import Context
+from Function import Function
 class TheListener(compiladoresListener):
     """
     Clase que implementa el listener para el analizador sintáctico. 
@@ -14,6 +15,8 @@ class TheListener(compiladoresListener):
     symbol_table = SymbolTable()  #Instancia de la tabla de símbolos
     errors = [] #Lista para almacenar errores encontrados
     warnings = [] #Lista para almacenar advertencias encontradas
+    actual_function = None # Para rastrear la funcion actual
+    stack_arguments = [] # Lista para almacenar los argumentos que espera una funcion
 
     def bugReport(self, ctx, type_error:str, message:str):
         """
@@ -71,10 +74,7 @@ class TheListener(compiladoresListener):
             for warning in self.warnings:
                 print(warning)
         else:
-            print("No aparecieron advertencias.")
-
-        # Muestra la tabla de simbolos
-        print(self.symbol_table) 
+            print("No aparecieron advertencias.") 
 
     def exitInstruccion(self, ctx:compiladoresParser.InstruccionContext):
         """
@@ -113,6 +113,10 @@ class TheListener(compiladoresListener):
                 self.warningReport(ctx, f"La variable '{variable.obtenerNombre()}' no fue usada")
 
         self.symbol_table.del_context() # Borra el contexto actual
+
+        # Cuando salga del bloque de una función, limpiar función actual
+        if self.funcion_actual:
+            self.funcion_actual = None
 
     def enterDeclaration(self, ctx:compiladoresParser.DeclarationContext):
         print(" ### Declaration. Adding a new symbol into the symbol table...")
@@ -165,8 +169,6 @@ class TheListener(compiladoresListener):
             return
         
         self.variables_dict.clear() # Para vaciar la pila de nombres de variables después de procesar la declaración.
-
-
 
     def exitVarlist(self, ctx: compiladoresParser.VarlistContext):
         """
@@ -262,7 +264,82 @@ class TheListener(compiladoresListener):
         
         if ctx.RPAR() and ctx.getChild(0).getText() != '(':
             self.bugReport(ctx, "Semantico", "Falta de apertura de parentesis")
+
+    def exitFunction_prototype(self, ctx: compiladoresParser.Function_prototypeContext):
+        """
+        Maneja la salida de un contexto de prototipo de función.
+        Es decir, mameja la declaracion de funciones.
+        """
+        return_type = ctx.getChild(0).getText().upper()
+        function_name = ctx.getChild(1).getText()
+
+        #Verificar si la función ya existe
+        if self.symbol_table.global_search(function_name):
+            self.bugReport(ctx, "Semantico", f"Funcion '{function_name}' ya fue declarada")
+            return
+
+        #Crear nueva función
+        _function = Function(function_name, return_type)
+        self.actual_function = _function #Guardamos la funcion actual.
+
+        #Procesamos los argumentos de la funcion, si existen
+        if str(ctx.getChild(3).getText()) != '': #Si la funcion tiene argumentos
+            self.processArguments(ctx.getChild(3), _function)
+
+        #Si la funcion no existe Agregar función a la tabla de símbolos
+        self.symbol_table.add_identifier(_function)
+        print(f"Nueva funcion: '{self.symbol_table.local_search(function_name).name}' agregada.\n")
+
+    def processArguments(self, arguments, function: Function):
+        """
+        Procesa que los argumentos de una función no esten repetidos.
+        Si el argumento es valido lo guarda en la lista de argumentos 
+        de la función.
+        """
+        argument_type = str(arguments.getChild(0).getText().upper())
+        argument_name = str(arguments.getChild(1).getText())
+
+        #Crear y agregar el primer argumento de la funcion
+        arg_variable = Variable(argument_name, argument_type)
+        function.add_arg(arg_variable)
+
+        if self.stack_arguments: #Si la funcion tiene mas argumentos
+            while self.stack_arguments: #Recorre la lista de argumentos de la funcion 
+                stack_argument = self.stack_arguments.pop()
+
+                for argument in function.args: #Para validar que el argumento no se repita
+                    if argument.name == str(stack_argument.getChild(1).getText()):
+                        self.reporteErrores(arguments, "Semantico", f"Parametro '{argument_name}' duplicado en 
+                            funcion '{function.name}'")
+                        return
+                
+                arg_variable = Variable(str(stack_argument.getChild(1).getText()), str(stack_argument.getChild(0).getText().upper()))
+                arg_variable.set_initialized() # Los parámetros se consideran inicializados
+                function.add_arg(arg_variable)
         
+        # Para vaciar la pila de nombres de parametros después de procesar la funcion
+        self.stack_arguments.clear()
+
+    def exitArguments_list(self, ctx: compiladoresParser.Arguments_listContext):
+        """
+        Se ejecuta al final de la lista de argumentos de una función.
+        """
+        if ctx.getChildCount():
+            self.stack_arguments.append(ctx.getChild(1))
+        
+    def exitFunction_call(self, ctx: compiladoresParser.Function_callContext):
+        """
+        Maneja las llamadas a funciones.
+        """
+        function_name = ctx.getChild(0).getText()
+        _function = self.symbol_table.global_search(function_name)
+
+        if _function is None: # Si la funcion no existe en la tabla de simbolos, registra el error
+            self.bugReport(ctx, "Semantico", f"Funcion '{function_name}' no fue declarada")
+            return
+    
+        _function.set_used() # Si la funcion existe, se marca como usada por la invocacion
+
     def visitTerminal(self, node: TerminalNode):
         print(" ---> Token: " + node.getText())
 
