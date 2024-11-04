@@ -6,7 +6,7 @@ class SymbolTable:
     #Class variable that will store the single instance
     _instance = None
     
-    _contexts = list[Context] = []
+    _contexts: list[Context] = []
     """
     Think of __new__ as a "template" and __init__ as the "decoration" of the created
     object. In the case of the Singleton, we want to make sure that only a 

@@ -76,7 +76,7 @@ class TheListener(compiladoresListener):
         else:
             print("No aparecieron advertencias.") 
 
-    def exitInstruccion(self, ctx:compiladoresParser.InstruccionContext):
+    def exitInstruction(self, ctx:compiladoresParser.InstructionContext):
         """
         Método que se ejecuta al salir del contexto de la regla "instruccion".
         Verifica si la instrucción termina con un punto y coma.
@@ -117,9 +117,6 @@ class TheListener(compiladoresListener):
         # Cuando salga del bloque de una función, limpiar función actual
         if self.funcion_actual:
             self.funcion_actual = None
-
-    def enterDeclaration(self, ctx:compiladoresParser.DeclarationContext):
-        print(" ### Declaration. Adding a new symbol into the symbol table...")
         
     def exitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
         """
@@ -309,8 +306,7 @@ class TheListener(compiladoresListener):
 
                 for argument in function.args: #Para validar que el argumento no se repita
                     if argument.name == str(stack_argument.getChild(1).getText()):
-                        self.reporteErrores(arguments, "Semantico", f"Parametro '{argument_name}' duplicado en 
-                            funcion '{function.name}'")
+                        self.reporteErrores(arguments, "Semantico", f"Parametro '{argument_name}' duplicado en funcion '{function.name}'")
                         return
                 
                 arg_variable = Variable(str(stack_argument.getChild(1).getText()), str(stack_argument.getChild(0).getText().upper()))
@@ -339,9 +335,3 @@ class TheListener(compiladoresListener):
             return
     
         _function.set_used() # Si la funcion existe, se marca como usada por la invocacion
-
-    def visitTerminal(self, node: TerminalNode):
-        print(" ---> Token: " + node.getText())
-
-    def visitErrorNode(self, node: ErrorNode):
-        print(" ---> ERROR")
