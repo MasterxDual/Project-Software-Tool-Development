@@ -1,8 +1,26 @@
-float f = 31;
-int i = f; 
+// Comentario que deberia ser ignorado
 
-void function(float b, int x);
+int funcion(int x);
 
-function(int e, int c) {
-    int var = 10;
+int pepe(int y, char x);
+int pepe();
+
+void main () {
+    int a = 0;
+    int b, w, v = 10;
+    int h123 = 0;
+    if (h123) {
+        hola(h123, v);
+    }
+    else float g;
+}
+
+int pepe(int y, char x){
+    int o = 0;
+    return o;
+}
+
+char hola(int a, int b){
+    a = b;
+    return a;
 }

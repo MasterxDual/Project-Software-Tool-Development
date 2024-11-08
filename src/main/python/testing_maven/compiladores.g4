@@ -124,7 +124,6 @@ declaration: datype ID definition varlist;
 datype: INT 
       | DOUBLE
       | CHAR
-      | VOID
       | FLOAT
       ;
 
@@ -234,7 +233,7 @@ return_value: datype
             | VOID
             ;
 
-function: function_prototype block;
+function: return_value ID LPAR arguments RPAR block;
 
 //Arguments of a function
 arguments: datype ID arguments_list
@@ -242,7 +241,7 @@ arguments: datype ID arguments_list
           ;
 
 //List of arguments since a function can receive more than one argument
-arguments_list: COMMA arguments
+arguments_list: COMMA datype ID arguments_list
               |
               ;
 
@@ -255,7 +254,7 @@ arguments_to_function: oplogic arguments_to_function_list
                     ;
     
 //List of arguments to function since a function can receive more than one argument    
-arguments_to_function_list: COMMA arguments_to_function
+arguments_to_function_list: COMMA oplogic arguments_to_function_list
                           |
                           ;
 

@@ -6,6 +6,7 @@ from Id import DataType
 from Variable import Variable
 from Context import Context
 from Function import Function
+from typing import Optional
 class TheListener(compiladoresListener):
     """
     Clase que implementa el listener para el analizador sintáctico. 
@@ -15,9 +16,9 @@ class TheListener(compiladoresListener):
     symbol_table = SymbolTable()  #Instancia de la tabla de símbolos
     errors = [] #Lista para almacenar errores encontrados
     warnings = [] #Lista para almacenar advertencias encontradas
-    actual_function = None # Para rastrear la funcion actual
+    actual_function: Optional[Function] = None # Para rastrear la funcion actual
     stack_arguments = [] # Lista para almacenar los argumentos que espera una funcion
-    #stack_incompatible_types = [] #Pila para almacenar los ids que pueden ser tipos de datos incompatibles
+    arguments_to_function = [] # Esta lista tendra que guardar los argumentos que se pasan a la funcion en la invocaion
 
     def bugReport(self, ctx, type_error:str, message:str):
         """
@@ -50,14 +51,17 @@ class TheListener(compiladoresListener):
         """
 
         print("\n+" + "="*10, "Comienza la Compilacion", "="*10 + "+\n")
-        global_context = Context()                          # Crea el contexto global
-        self.symbol_table.add_context(global_context) # Agrega el contexto global (primer contexto) a la tabla de simbolos
+        self.symbol_table.add_context("Global") # Agrega el contexto global (primer contexto) a la tabla de simbolos
+        print(f"=== Entrando al Contexto Global ===")
 
     def exitProgram(self, ctx:compiladoresParser.ProgramContext):
         """
         Método que se ejecuta al salir del contexto de la regla "programa".
         Finaliza el proceso de compilación y muestra los reportes de errores y advertencias.
         """
+        context_name = self.symbol_table.get_contexts()
+        print(f"\n=== Saliendo Contexto: {context_name[-1].name} ===") # Notifica que salimos de dicho contexto
+
         print("\n+" + "="*10, "Fin de la Compilacion", "="*10 + "+\n")
         self.symbol_table.del_context() # Borra el contexto global (Ultimo contexto restante)
 
@@ -77,6 +81,32 @@ class TheListener(compiladoresListener):
         else:
             print("No aparecieron advertencias.") 
 
+    def enterInstruction(self, ctx: compiladoresParser.InstructionContext):
+        #Si el padre es 'while'
+        if isinstance(ctx.parentCtx, compiladoresParser.WhileiContext):
+            context_name = "While"
+            self.symbol_table.add_context(context_name) # Agrega un nuevo Contexto a la tabla de simbolos
+            print(f"\n=== Entrando al Contexto: {context_name} ===")
+        
+        #Si el padre es 'if'
+        elif isinstance(ctx.parentCtx, compiladoresParser.IfiContext):
+            context_name = "If"
+            self.symbol_table.add_context(context_name) # Agrega un nuevo Contexto a la tabla de simbolos
+            print(f"\n=== Entrando al Contexto: {context_name} ===")
+
+        #Si el padre es 'for'
+        elif isinstance(ctx.parentCtx, compiladoresParser.ForiContext):
+            context_name = "For"
+            self.symbol_table.add_context(context_name) # Agrega un nuevo Contexto a la tabla de simbolos
+            print(f"\n=== Entrando al Contexto: {context_name} ===")
+
+        #Si el padre es 'else'
+        elif isinstance(ctx.parentCtx, compiladoresParser.ElseiContext):
+            context_name = "Else"
+            self.symbol_table.add_context(context_name) # Agrega un nuevo Contexto a la tabla de simbolos
+            print(f"\n=== Entrando al Contexto: {context_name} ===")
+        
+
     def exitInstruction(self, ctx:compiladoresParser.InstructionContext):
         """
         Método que se ejecuta al salir del contexto de la regla "instruccion".
@@ -87,37 +117,90 @@ class TheListener(compiladoresListener):
         if (ctx.declaration() or ctx.assignment() or ctx.returning() or ctx.function_prototype() or ctx.function_call()):
             if ctx.getChild(1).getText() != ';': # Si no termina con ';' muestra un error
                 self.bugReport(ctx, "Sintactico", "se esperaba ';'")
+
+        if not ctx.block():
+            if ctx.function_prototype() or ctx.function():
+                # self.bugReport(ctx, "Semantico", "Operacion no valida.")
+                return
+            # Si el padre es 'while'
+            if isinstance(ctx.parentCtx, compiladoresParser.WhileiContext):
+                self.searchWarningsContext(ctx)
+                print("\n=== Saliendo del Contexto: 'While' ===")
+                self.symbol_table.del_context() # Elimina el contexto actual
+                
+            # Si el padre es 'for'
+            elif isinstance(ctx.parentCtx, compiladoresParser.ForiContext):
+                self.searchWarningsContext(ctx)
+                print("\n=== Saliendo del Contexto: 'For'' ===")
+                self.symbol_table.del_context() # Elimina el contexto actual
+            # Si el padre es 'if'
+            elif isinstance(ctx.parentCtx, compiladoresParser.IfiContext):
+                self.searchWarningsContext(ctx)
+                print("\n=== Saliendo del Contexto: 'If' ===")
+                self.symbol_table.del_context() # Elimina el contexto actual
+            # Si el padre es 'else'
+            elif isinstance(ctx.parentCtx, compiladoresParser.ElseiContext):
+                self.searchWarningsContext(ctx)
+                print("\n=== Saliendo del Contexto: 'Else' ===")
+                self.symbol_table.del_context() # Elimina el contexto actual
         
+        # Si la instruccion es una funcion
+        if ctx.function():
+            # Buscar advertencias
+            self.searchWarningsContext(ctx)
+            self.symbol_table.del_context() # Elimina el contexto actual
+        
+    def searchWarningsContext(self, ctx):
+        contexts = self.symbol_table.get_contexts()
+        # Recorremos el contexto actual en busca de ID no inicializados y/o usados
+        for variable in contexts[-1].get_identifiers().values(): 
+            if variable.get_initialized() is False: # Si no esta incializado
+                self.warningReport(ctx, f"Identificador '{variable.name}' no inicializada")
+            if variable.get_used() is False: # Si no esta usado:
+                self.warningReport(ctx, f"Identificador '{variable.name}' no usada")
+
+
 
     def enterBlock(self, ctx: compiladoresParser.BlockContext):
         """
         Método que se ejecuta al entrar en el contexto de la regla "bloque".
         Crea un nuevo contexto para las variables locales.
         """
-
-        new_context = Context() # Crea un nuevo Contexto
-        self.symbol_table.add_context(new_context) # Agrega un nuevo Contexto a la tabla de simbolos
+        father = ctx.parentCtx
+        # Verifica si padre es una instancia de la clase especifica proporcionada
+        if isinstance(father, compiladoresParser.FunctionContext):
+            context_name = f"Función {father.getChild(1).getText()}" 
+            self.symbol_table.add_context(context_name) # Agrega un nuevo Contexto a la tabla de simbolos
+            print(f"\n=== Entrando al Contexto: {context_name} ===")
 
     def exitBlock(self, ctx: compiladoresParser.BlockContext):
         """
         Método que se ejecuta al salir del contexto de la regla "bloque".
         Verifica las variables no inicializadas y no usadas en el bloque.
         """
+        father = ctx.parentCtx
+        context_name = f"{father.getChild(0).getText()}"
+        # Verifica si padre es una instancia de la clase especifica proporcionada
+        if isinstance(father, compiladoresParser.FunctionContext):
+            context_name = f"Función {father.getChild(1).getText()}"
+            while self.stack_arguments:
+                arg = self.stack_arguments.pop()
+                self.symbol_table.add_identifier(arg)
+                print(f"Se agrego el ID '{arg.name}' a la funcion '{context_name}'")
+            self.stack_arguments.clear()
+
         #Obtenemos todos los contextos de la tabla de simbolos
         contexts = self.symbol_table.get_contexts()
 
         # Recorremos el contexto actual en busca de ID no inicializados y/o usados
         for variable in contexts[-1].get_identifiers().values():
             if variable.get_initialized() is False: # Si no esta inicializado
-                self.warningReport(ctx, f"La variable '{variable.name}' no fue inicialzada")
+                self.warningReport(ctx, f"Variable '{variable.name}' no inicializada")
             if variable.get_used() is False: # Si no esta usado
-                self.warningReport(ctx, f"La variable '{variable.name}' no fue usada")
+                self.warningReport(ctx, f"Variable '{variable.name}' no usada")
 
+        print(f"\n=== Saliendo del Contexto: {context_name} ===")
         self.symbol_table.del_context() # Borra el contexto actual
-
-        # Cuando salga del bloque de una función, limpiar función actual
-        if self.funcion_actual:
-            self.funcion_actual = None
         
     def exitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
         """
@@ -135,8 +218,7 @@ class TheListener(compiladoresListener):
             self.symbol_table.add_identifier(variable) # Agrega la variable a la tabla de símbolos en el contexto actual
 
             # Para validar si realmente se estan agregando los ID's a la tabla de contextos en su contexto correspondiente
-            print(f"Nueva variable: '{self.symbol_table.local_search(id_name).name}'" + 
-                f" de tipo '{data_type}' agregada.\n")
+            print(f"Nueva variable: '{id_name}' de tipo '{data_type}' agregada.\n")
 
             if str(ctx.getChild(2).getText()) != '': # Si el 3er hijo en la declaracion es distinto de vacio, existe una definicion
                 variable.set_initialized() # Marca la variable como inicializada si se proporciona un valor
@@ -160,11 +242,9 @@ class TheListener(compiladoresListener):
                     else:
                         #Error si la variable ya fue declarada
                         self.bugReport(ctx, "Semantico", f"El identificador '{ctx.getChild(1).getText()}' ya esta definido en este bloque")
-                        return
         else:
             # Imprime un mensaje de error si la variable ya fue declarada
             self.bugReport(ctx, "Semantico", f"El identificador '{ctx.getChild(1).getText()}' ya esta definido en este bloque")
-            return
         
         self.variables_dict.clear() # Para vaciar la pila de nombres de variables después de procesar la declaración.
 
@@ -184,7 +264,8 @@ class TheListener(compiladoresListener):
         """
         Maneja la salida de un contexto de asignación.
         """
-        identifier = self.symbol_table.global_search(ctx.getChild(0).getText())
+        variable_name = ctx.getChild(0).getText()
+        identifier = self.symbol_table.global_search(variable_name)
         if identifier is None: # Si el identificador no existe en la tabla de simbolos
             # Notifica el uso de un ID sin declarar
             self.bugReport(ctx, "Semantico", f"El identificador '{ctx.getChild(0).getText()}' no esta definido")
@@ -230,17 +311,6 @@ class TheListener(compiladoresListener):
         if ctx.getChild(3).getText() != ')':
             self.bugReport(ctx, "Sintactico", "Falta parentesis de cierre")
         
-    def exitFunction_call(self, ctx: compiladoresParser.Function_callContext):
-        """
-        Maneja la salida de un contexto de llamada a funcion.
-        """
-        if ctx.getChild(1).getText() != '(':
-            self.bugReport(ctx, "Sintactico", "Falta parentesis de apertura")
-            return
-        
-        if ctx.getChild(3).getText() != ')':
-            self.bugReport(ctx, "Sintactico", "Falta parentesis de cierre")
-
 
     def exitFactor(self, ctx:compiladoresParser.FactorContext):
         """
@@ -286,52 +356,81 @@ class TheListener(compiladoresListener):
 
         #Procesamos los argumentos de la funcion, si existen
         if str(ctx.getChild(3).getText()) != '': #Si la funcion tiene argumentos
-            self.processArguments(ctx.getChild(3), _function)
+            for arg in self.stack_arguments:
+                self.actual_function.add_arg(arg)
 
         #Si la funcion no existe Agregar función a la tabla de símbolos
         self.symbol_table.add_identifier(_function)
         print(f"Nueva funcion: '{self.symbol_table.local_search(function_name).name}' agregada.\n")
 
-    def processArguments(self, arguments, function: Function):
-        """
-        Procesa que los argumentos de una función no esten repetidos.
-        Si el argumento es valido lo guarda en la lista de argumentos 
-        de la función.
-        """
-        argument_type = str(arguments.getChild(0).getText().upper())
-        argument_name = str(arguments.getChild(1).getText())
 
-        #Crear y agregar el primer argumento de la funcion
-        arg_variable = Variable(argument_name, argument_type)
-        function.add_arg(arg_variable)
-
-        if self.stack_arguments: #Si la funcion tiene mas argumentos
-            while self.stack_arguments: #Recorre la lista de argumentos de la funcion 
-                stack_argument = self.stack_arguments.pop()
-
-                for argument in function.args: #Para validar que el argumento no se repita
-                    if argument.name == str(stack_argument.getChild(1).getText()):
-                        self.reporteErrores(arguments, "Semantico", f"Parametro '{argument_name}' duplicado en funcion '{function.name}'")
-                        return
-                
-                arg_variable = Variable(str(stack_argument.getChild(1).getText()), str(stack_argument.getChild(0).getText().upper()))
-                arg_variable.set_initialized() # Los parámetros se consideran inicializados
-                function.add_arg(arg_variable)
-        
-        # Para vaciar la pila de nombres de parametros después de procesar la funcion
-        self.stack_arguments.clear()
-
+    def exitArguments(self, ctx: compiladoresParser.ArgumentsContext):
+        if ctx.getChildCount():
+            name = ctx.getChild(1).getText()
+            data_type = ctx.getChild(0).getText()
+            new_variable = Variable(name, data_type)
+            new_variable.set_initialized()  # Los parámetros se consideran inicializados
+            new_variable.set_used()
+            self.stack_arguments.append(new_variable)    
+    
     def exitArguments_list(self, ctx: compiladoresParser.Arguments_listContext):
         """
         Se ejecuta al final de la lista de argumentos de una función.
         """
         if ctx.getChildCount():
-            self.stack_arguments.append(ctx.getChild(1))
+            name = ctx.getChild(2).getText()
+            data_type = ctx.getChild(1).getText()
+            new_variable = Variable(name, data_type)
+            new_variable.set_initialized()  # Los parámetros se consideran inicializados
+            new_variable.set_used()
+            self.stack_arguments.append(new_variable)
+
+    def exitFunction(self, ctx: compiladoresParser.FunctionContext):
+        """
+        Maneja la salida de un contexto de función.
+        """
+        name = ctx.getChild(1).getText()
+        function = self.symbol_table.global_search(name)
+
+        #Verificar si la funcion no existe
+        if function is None: # Si la funcion no existe ==> no tiene prototipo
+            #Crear nueva funcion
+            return_type = ctx.getChild(0).getText().upper()
+            function = Function(name, return_type)
+            self.actual_function = function # Guardamos la funcion actual
+
+            # Procesamos los argumentos de la funcion, si existen
+            if str(ctx.getChild(3).getText()) != '': # Si la funcion tiene argumentos
+                for arg in self.stack_arguments:
+                    self.actual_function.add_arg(arg)
+
+            # Si la funcion no existe Agregar función a la tabla de símbolos
+            self.symbol_table.add_identifier(function)
+            function.set_initialized() # Se inicializa porque su definicion esta escrita correctamente
+            print(f"Nueva funcion: '{function.name}' agregada.\n")
+
+            if name == 'main':
+                function.set_used() #Marco la funcion principal main como usada
+        else:
+            # Si la función ya existe, verificar si los argumentos coinciden
+            if function.get_type() != ctx.getChild(0).getText().upper():
+                self.bugReport(ctx, "Semantico", f"Tipo de retorno de la funcion no coincide con la declaracion")
+                return
+            # self.verifyArguments(ctx, funcion, self.stack_arguments) # Verifica que la cantidad de argumento coincida
+            # Si todo salio bien, y el prototipo tiene su definicion de funcion entonces la inicializo
+            function.set_initialized() # Se inicializa porque su definicion esta escrita correctamente
         
     def exitFunction_call(self, ctx: compiladoresParser.Function_callContext):
         """
         Maneja las llamadas a funciones.
         """
+        if ctx.getChild(1).getText() != '(':
+            self.bugReport(ctx, "Sintactico", "Falta parentesis de apertura")
+            return
+        if ctx.getChild(3).getText() != ')':
+            self.bugReport(ctx, "Sintactico", "Falta parentesis de cierre")
+            return
+        
         function_name = ctx.getChild(0).getText()
         _function = self.symbol_table.global_search(function_name)
 
@@ -339,4 +438,30 @@ class TheListener(compiladoresListener):
             self.bugReport(ctx, "Semantico", f"Funcion '{function_name}' no fue declarada")
             return
     
-        _function.set_used() # Si la funcion existe, se marca como usada por la invocacion
+        if self.verifyArguments(ctx, _function, self.arguments_to_function):
+            _function.set_used() # Si la funcion existe, se marca como usada por la invocacion
+
+
+    def exitArguments_to_function_list(self, ctx: compiladoresParser.Arguments_to_function_listContext):
+        """
+        Se ejecuta al final de la lista de argumentos de una llamada a función.
+        """
+        if ctx.getChildCount():
+            self.arguments_to_function.append(ctx.getChild(1).getText())
+
+    def exitArguments_to_function(self, ctx:compiladoresParser.Arguments_to_functionContext):
+        """
+        Se ejecuta al final de la lista de argumentos de una llamada a función.
+        """
+        if ctx.getChildCount():
+            self.arguments_to_function.append(ctx.getChild(0).getText())
+
+    def verifyArguments(self, ctx, function: Function, arguments):
+        """
+        Verifica que los argumentos coincidan con los parámetros de la función.
+        """
+        if len(arguments) != len(function.args): # Revisar el metodo de obtencion de los metodos esperados por la funcion
+            self.bugReport(ctx, "Semantico", f"Número incorrecto de argumentos para función '{function.name}'. "
+                f"Esperados: {len(function.args)}, Recibidos: {len(arguments)}")
+            return False
+        return True
