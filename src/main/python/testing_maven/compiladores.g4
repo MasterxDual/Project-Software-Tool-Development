@@ -111,6 +111,7 @@ instruction: declaration SEMI
             | returning SEMI
             | block
             | function
+            | function_call_value SEMI
             | function_call SEMI
             | function_prototype SEMI
             ;
@@ -228,6 +229,8 @@ iter: ID INC
 returning: RETURN oplogic;
 
 function_prototype: return_value ID LPAR arguments RPAR;
+
+function_call_value: ID ASSIGN function_call;
 
 return_value: datype
             | VOID
