@@ -78,7 +78,7 @@ class TheListener(compiladoresListener):
         for variable in contexts[-1].get_identifiers().values(): 
             if variable.get_initialized() is False: # Si no esta incializado
                 self.warningReport(ctx, f"Identificador '{variable.name}' no inicializada")
-            if variable.getUsado() is False: # Si no esta usado:
+            if variable.get_used() is False: # Si no esta usado:
                 self.warningReport(ctx, f"Identificador '{variable.name}' no usada")
 
 
@@ -167,8 +167,6 @@ class TheListener(compiladoresListener):
         print(f"\n=== Saliendo del Contexto: {context_name} ===")
         self.symbol_table.del_context() # Borra el contexto actual
     
-    def exitDefinition(self, ctx: compiladoresParser.DefinitionContext):
-        pass
 
     def exitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
         """
@@ -186,10 +184,18 @@ class TheListener(compiladoresListener):
             self.symbol_table.add_identifier(variable) # Agrega la variable a la tabla de símbolos en el contexto actual
 
             # Para validar si realmente se estan agregando los ID's a la tabla de contextos en su contexto correspondiente
-            print(f"Nueva variable: '{id_name}' de tipo '{data_type}' agregada.\n")
+            print(f"Nueva variable: '{id_name}' de tipo '{data_type}' agregada.\n") #Revisar para que no agregue el simbolo o solo reporte un error
 
             if str(ctx.getChild(2).getText()) != '': # Si el 3er hijo en la declaracion es distinto de vacio, existe una definicion
-                variable.set_initialized() # Marca la variable como inicializada si se proporciona un valor
+                if self.data_type_obtained: #Evaluar si los tipos de datos son compatibles en la asignacion
+                    if data_type != self.data_type_obtained:
+                        self.warningReport(ctx, "Sintactico: tipo de dato no compatible")
+                        return
+                    variable.set_initialized() #Marca la variable como inicializada si se proporciona un valor
+                    self.data_type_obtained = None
+                else:
+                    #Si no fuese un ID
+                    variable.set_initialized() #Marca la variable como inicializada si se proporciona un valor
 
             # Maneja la declaración de múltiples variables (si es necesario)
             if self.variables_dict:
@@ -202,8 +208,7 @@ class TheListener(compiladoresListener):
                         self.symbol_table.add_identifier(variable)
 
                         # Para validar si realmente se estan agregando los ID's a la tabla de contextos en su contexto correspondiente
-                        print(f"Nueva variable: '{self.symbol_table.local_search(variable.name).name}'" + 
-                            f" de tipo '{data_type}' agregada.\n")
+                        print(f"Nueva variable: '{self.symbol_table.local_search(variable.name).name}'" + f" de tipo '{data_type}' agregada.\n")
                         
                         if is_initialized:  #Marca la variable como inicializada si es True
                             variable.set_initialized()
@@ -238,12 +243,21 @@ class TheListener(compiladoresListener):
             # Notifica el uso de un ID sin declarar
             self.bugReport(ctx, "Semantico", f"El identificador '{ctx.getChild(0).getText()}' no esta definido")
             return
+        else: #Evaluar si los tipos de datos son compatibles en la asignacion
+            data_type = identifier._data_type
+            if self.data_type_obtained:
+                if data_type != self.data_type_obtained:
+                    self.warningReport(ctx, "Sintactico: tipo de dato no compatible")
+                    return
+                identifier.set_initialized() #Marca la variable como inicializada si se proporciona un valor
+                self.data_type_obtained = None
 
         # Verifica si el valor asignado es correcto
         if ctx.getChild(2) == ctx.opal():
             identifier.set_initialized() # Se inicializa la variable
 
-    """ ------------------------------------------------------------------------------------ """
+    """----------------------------------------------------------------"""
+    data_type_obtained = None
 
     def exitWhilei(self, ctx:compiladoresParser.WhileiContext):
         """
@@ -304,7 +318,10 @@ class TheListener(compiladoresListener):
                 self.bugReport(ctx, "Semantico", f"El identificador '{ctx.getChild(0).getText()}' no esta definido")
                 return
             else: #Si el ID fue declarado actualiza su estado a usado en caso que no lo este
+                self.data_type_obtained = identifier._data_type
                 self.symbol_table.update_used(identifier.name)
+        else:
+            self.data_type_obtained = None
 
         # Manejo de parentesis en operaciones logicas:
         if ctx.LPAR() and ctx.getChild(2).getText() != ')':
@@ -359,6 +376,9 @@ class TheListener(compiladoresListener):
 
 
     def exitArguments(self, ctx: compiladoresParser.ArgumentsContext):
+        """
+        Maneja la salida de un contexto de argumentos
+        """
         if ctx.getChildCount():
             name = ctx.getChild(1).getText()
             data_type = ctx.getChild(0).getText()
@@ -403,9 +423,6 @@ class TheListener(compiladoresListener):
             function.set_initialized() # Se inicializa porque su definicion esta escrita correctamente
             print(f"Nueva funcion: '{function.name}' agregada.\n")
 
-            if ctx.getChild(0).getText().upper() != self.types_list.pop():
-                print("Tipo de dato incompatible")
-
             if name == 'main':
                 function.set_used() #Marco la funcion principal main como usada
 
@@ -435,8 +452,6 @@ class TheListener(compiladoresListener):
 
             # Si todo salio bien, y el prototipo tiene su definicion de funcion entonces la inicializo
             function.set_initialized() # Se inicializa porque su definicion esta escrita correctamente
-            if ctx.getChild(0).getText().upper() != self.types_list.pop():
-                print("Tipo de dato incompatible")
 
             #Vacia la pila de argumentos
             if self.stack_arguments:
