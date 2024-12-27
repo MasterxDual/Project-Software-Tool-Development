@@ -1,0 +1,24 @@
+int funcion(int x);
+
+int pepe(int y, char x);
+int pepe();
+
+void main () {
+    int a = 0;
+    int b, w, v = 10;
+    int h123 = 0;
+    if (h123) {
+        hola(h123, v);
+    }
+    else float g;
+}
+
+int pepe(int y, char x){
+    int o = 0;
+    return o;
+}
+
+char hola(int a, int b){
+    a = b;
+    return a;
+}

@@ -1,12 +1,4 @@
-x = ((a + b * c) > (d - e) && (e * f) == (a % b)) || (a / f != d);
-
-x = 4 + 16 / 4 * x + x * x;
-x = 4 + 5 - 7 - 1;
-x = 4;
-
-while(x) {
-    int miVariable;
-}
-
-x = !a > b && c == d || e != f;
-
+int a = 1;
+int b = 2;
+int c = b + a;
+a = b;
