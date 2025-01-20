@@ -3,22 +3,43 @@ from compiladoresParser import compiladoresParser
 
 class Temporal():
     def __init__(self):
-        self.contador = -1
+        self.counter = -1
 
     def get_temporal(self):
-        self.contador += 1
-        return f't{self.contador}'
+        self.counter += 1
+        return f't{self.counter}'
+    
+class Label():
+    def __init__(self):
+        self.counter = -1
+
+    def get_label(self):
+        self.counter += 1
+        return f'l{self.counter}'
 
 class Walker(compiladoresVisitor):
-    _temporales             = []
-    _etiquetas              = []
-    _identificadores        = []
-    generadorDeTemporales   = Temporal()
+    def __init__(self):  
+        self.file                    = None
+        self.route                    = './output/codigoIntermedio.txt' 
+        self.temporary              = []
+        self.labels               = []
+        self.temporaryGenerator   = Temporal()
+        self.LabelsGenerator    = Label()
+
+        self.operating1               = None
+        self.operating2               = None
+        self.operator               = None
+        self.isAdder               = False
+
+        # Constantes Codigo Intermedio de Tres Direcciones
+        self.label   = 'label'
+        self.b          = 'jmp'
+        self.bneq       = 'ifnjmp'
     
     def visitProgram(self, ctx: compiladoresParser.ProgramContext):
         print("-" + "=" * 30 + "-")
         print("-- Comienza a generar Codigo Intermedio --")
-        self.file = open("./output/codigoIntermedio.txt", "w")
+        self.file = open(self.route, "w")
 
         self.visitInstructions(ctx.getChild(0))
 
@@ -26,7 +47,7 @@ class Walker(compiladoresVisitor):
         print("-- Codigo Intermedio generado Correctamente --")
         print("-" + "=" * 30 + "-")
 
-    # Visit a parse tree produced by compiladoresParser#instrucciones.
+    # Visit a parse tree produced by compiladoresParser#instructions.
     def visitInstructions(self, ctx:compiladoresParser.InstructionsContext):
         self.visitInstruction(ctx.getChild(0))
 
@@ -35,8 +56,38 @@ class Walker(compiladoresVisitor):
 
         if ctx.getChildCount() == 0:
             return
+
+    # Visit a parse tree produced by compiladoresParser#declaration.
+    def visitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
+        # Guardo el valor del identificador de la declaracion
+        _id = ctx.getChild(1).getText()
+
+        # Si existe el hijo 2 (Definicion), entonces hay una asignacion a la variable
+        if ctx.getChild(2).getChildCount() != 0:
+            self.visitDefinition(ctx.getChild(2))
+
+            # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
+            if self.temporales:
+                self.file.write(f"{_id} = {self.temporary.pop()}\n\n")
+                
+            # De la contrario la variable solo almacena un factor
+            else:
+                self.file.write(f"{_id} = {self.operating1}\n\n")
+
+            # Reseteo los elementos para las operaciones
+            self.operating1 = None
+            self.operating2 = None
+            self.operator  = None
+
+        # De lo contrario solo se declaro la varible vacia
+        else:
+            self.file.write(f'Declaracion de la variable {_id}\n')
+        
+        if ctx.getChild(3).getChildCount() != 0:
+            self.visitVarlist(ctx.getChild(3))
+
     
-    # Visit a parse tree produced by compiladoresParser#instruccion.
+    # Visit a parse tree produced by compiladoresParser#instruction.
     def visitInstruction(self, ctx:compiladoresParser.InstructionContext):
         if isinstance (ctx.getChild(0), compiladoresParser.DeclarationContext):
             self.visitDeclaration(ctx.getChild(0))
@@ -45,82 +96,304 @@ class Walker(compiladoresVisitor):
         else:
             return
 
-    # Visit a parse tree produced by compiladoresParser#declaracion.
-    def visitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
-        self._identificadores.append(ctx.getChild(1).getText())
+
+    # Visit a parse tree produced by compiladoresParser#definition.
+    def visitDefinition(self, ctx:compiladoresParser.DefinitionContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        self.visitOpal(ctx.getChild(1))
+
+    # Visit a parse tree produced by compiladoresParser#varList.
+    def visitVarlist(self, ctx:compiladoresParser.VarlistContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        # Guardo el valor del identificador de la declaracion
+        _id = ctx.getChild(1).getText()
+
+        # Si existe el hijo 3 (Definicion), entonces hay una asignacion a la variable
         if ctx.getChild(2).getChildCount() != 0:
             self.visitDefinition(ctx.getChild(2))
-        else:
-            return
 
-    # Visit a parse tree produced by compiladoresParser#definicion.
-    def visitDefinition(self, ctx:compiladoresParser.DefinitionContext):
-        self.visitOpal(ctx.getChild(1))
-        return
+            # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
+            if self.temporary:
+                self.file.write(f"{id} = {self.temporary.pop()}\n\n")
+                
+            # De la contrario la variable solo almacena un factor
+            else:
+                self.file.write(f"{id} = {self.operating1}\n\n")
+
+            # Reseteo los los elementos para las operaciones
+            self.operating1 = None
+            self.operating2 = None
+            self.operator  = None
+
+        # De lo contrario solo se declaro la varible vacia
+        else:
+            self.file.write(f'Declaracion de la variable {_id}\n')
+
+        if ctx.getChild(3).getChildCount() != 0:
+            self.visitVarlist(ctx.getChild(3))
+
+    # Visit a parse tree produced by compiladoresParser#assignment.
+    def visitAssignment(self, ctx:compiladoresParser.AssignmentContext):
+        # Guardo el valor del identificador de la declaracion
+        _id = ctx.getChild(0).getText()
+
+        self.visitOpal(ctx.getChild(2))
+
+        # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
+        if self.temporary:
+            self.file.write(f"{_id} = {self.temporary.pop()}\n\n")
+        
+        # De lo contrario la variable solo almacena un factor
+        else:
+            self.file.write(f"{_id} = {self.operating1}\n\n")
+
+        # Reseteo los los elementos para las operaciones
+        self.operating1 = None
+        self.operating2 = None
+        self.operator  = None
 
     # Visit a parse tree produced by compiladoresParser#opal.
     def visitOpal(self, ctx:compiladoresParser.OpalContext):
         self.visitOplogic(ctx.getChild(0))
-        return
-
-    # Visit a parse tree produced by compiladoresParser#oplogicos.
+        
+     # Visit a parse tree produced by compiladoresParser#oplogic.
     def visitOplogic(self, ctx:compiladoresParser.OplogicContext):
         self.visitLogic(ctx.getChild(0))
-        return
 
-    # Visit a parse tree produced by compiladoresParser#logico.
+        if ctx.getChild(1).getChildCount() != 0:
+            # Si el operando1 es un temporal, es el ultimo paso de la asignacion
+            if self.temporary:
+                self.operating1 = self.temporary.pop()
+            # En caso contrario, operando1 es el primer factor, el valor queda como esta
+            
+            self.visitLor(ctx.getChild(1))
+
+    # Visit a parse tree produced by compiladoresParser#lor.
+    def visitLor(self, ctx:compiladoresParser.LorContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        # Creo una copia del actual operando1
+        operating1 = self.operating1
+
+        # Visito el segundo conjunto de la operacion AND
+        self.visitLogic(ctx.getChild(1))
+
+        # Si el operando 2 es un temporal, es el ultimo paso de la asignacion
+        if self.temporary:
+            self.operating2 = self.temporary.pop()
+        # En caso contrario, operando2 es un facotr simple guardado en operando1
+        else:
+            self.operating2 = self.operating1
+
+        # Recupero el valor del operando1 de la operacion OR actual
+        self.operating1 = operating1
+
+        # Guardo el operador OR
+        self.operator = ctx.getChild(0).getText()
+
+         # Genero un temporal para la operacion OR
+        self.temporary.append(self.temporaryGenerator.get_temporal())
+
+        # Escribo en el archivo la operacion OR
+        self.file.write(f'{self.temporary[-1]} = {self.operating1} {self.operator} {self.operating2}\n')
+
+        # Si el hijo 2 (Lor) no es vacio, entonces hay otra operacion OR
+        if ctx.getChild(2).getChildCount() != 0:
+            # El operando1 para la siguiente operacion OR es el temporal generado en esta
+            self.operating1 = self.temporary.pop()
+
+            # Visita la regla Lor para escribir la siguiente operacion
+            self.visitLor(ctx.getChild(2))
+
+    # Visit a parse tree produced by compiladoresParser#logic.
     def visitLogic(self, ctx:compiladoresParser.LogicContext):
         self.visitSet(ctx.getChild(0))
-        return
 
-    # Visit a parse tree produced by compiladoresParser#conjunto.
+        if ctx.getChild(1).getChildCount() != 0:
+            # Si el operando 1 es un temporal, es el ultimo paso de la asignacion
+            if self.temporary:
+                self.operating1 = self.temporary.pop()
+            # En caso contrario, operando1 es el primer factor, el valor queda como esta
+
+            self.visitLand(ctx.getChild(1))
+
+    # Visit a parse tree produced by compiladoresParser#land.elf.operating1
+    def visitLand(self, ctx:compiladoresParser.LandContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        # Creo una copia del actual operando1
+        operating1 = self.operating1
+
+        # Visito el segundo conjunto de la operacion AND
+        self.visitSet(ctx.getChild(1))
+
+        # Si el operando 2 es un temporal, es el ultimo paso de la asignacion
+        if self.temporary:
+            self.operating2 = self.temporary.pop()
+        # En caso contrario, operando2 es un facotr simple guardado en operando1
+        else:
+            self.operating2 = self.operating1
+
+        # Recupero el valor del operando1 de la operacion AND actual
+        self.operating1 = operating1
+
+        # Guardo el operador AND
+        self.operator = ctx.getChild(0).getText()
+
+        # Genero un temporal para la operacion AND
+        self.temporary.append(self.temporaryGenerator.get_temporal())
+
+        # Escribo en el archivo la operacion AND
+        self.file.write(f'{self.temporary[-1]} = {self.operating1} {self.operator} {self.operating2}\n')
+
+        # Si el hijo 2 (Land) no es vacio, entonces hay otra operacion AND
+        if ctx.getChild(2).getChildCount() != 0:
+            # El operando1 para la siguiente operacion AND es el temporal generado en esta
+            self.operating1 = self.temporary.pop()
+
+            # Visita la regla Land para escribir la siguiente operacion
+            self.visitLand(ctx.getChild(2))
+
+    # Visit a parse tree produced by compiladoresParser#set.
     def visitSet(self, ctx:compiladoresParser.SetContext):
-        self.visitC(ctx.getChild(0))
-        return
+        # Si el hijo 1 (Igualdad) no es vacio, entonces hay una comparacion de igualdad
+        if ctx.getChild(1).getChildCount() != 0:
+            # Si el hijo 0 (C) tiene un hijo 1 (Comparar) vacio, entonces no hay operacion de comparacion
+            cond1 = ctx.getChild(0).getChild(1).getChildCount() == 0
+
+            # Si el hijo 0 (C) tiene un hijo 0 (Exp) tiene un hijo 1 (E) vacio, entonces no hay operacion de suma/resta
+            cond2 = ctx.getChild(0).getChild(0).getChild(1).getChildCount() == 0
+
+            # Si el hijo 0 (C) tiene un hijo 0 (Exp) tiene un hijo 0 (Term) que tiene un hijo 1 (T) vacio, entonces es un termino simple
+            cond3 = ctx.getChild(0).getChild(0).getChild(0).getChild(1).getChildCount() == 0
+
+            # Entonces si se cumplen las condiciones, operando1 es un termino simple
+            if cond1 and cond2 and cond3:
+                self.visitC(ctx.getChild(0))
+
+            # De lo contrario
+            else:
+                self.visitC(ctx.getChild(0))
+
+                self.operating1 = self.temporary.pop(0)
+
+            # Visito Igualdad  en busca de comparaciones de igualdad
+            self.visitEquality(ctx.getChild(1))                
+        
+        # De lo contrario no hay comparaciones de igualdad, asi que solo visita al subconjunto en busca de operaciones de comparacion
+        else:                
+            self.visitC(ctx.getChild(0))
+
+
+    # Visit a parse tree produced by compiladoresParser#equality.
+    def visitEquality(self, ctx:compiladoresParser.EqualityContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        # Guarda el valor actual del operando1
+        operating1 = self.operating1
+
+        # Si el hijo 1 (C) tiene un hijo 1 (Comparar) vacio, entonces no hay operacion de comparacion
+        cond1 = ctx.getChild(1).getChild(1).getChildCount() == 0
+
+        # Si el hijo 1 (C) tiene un hijo 0 (Exp) tiene un hijo 1 (E) vacio, entonces no hay operacion de suma/resta
+        cond2 = ctx.getChild(1).getChild(0).getChild(1).getChildCount() == 0
+
+        # Si el hijo 1 (C) tiene un hijo 0 (Exp) tiene un hijo 0 (Term) que tiene un hijo 1 (T) vacio, entonces es un termino simple
+        cond3 = ctx.getChild(1).getChild(0).getChild(0).getChild(1).getChildCount() == 0
+
+        # Entonces si se cumplen estas condiciones
+        if cond1 and cond2 and cond3:
+            self.visitC(ctx.getChild(1))
+            self.operating2 = self.operating1
+
+        # De lo contrario
+        else:
+            self.visitC(ctx.getChild(1))
+
+            self.operating2 = self.temporary.pop(0) 
+
+        # Guardo el valor del operador de comparacion de igualdad
+        self.operator = ctx.getChild(0).getText()
+
+        # Reasigno el valor original del operando1
+        self.operating1 = operating1
+
+        # Genera un temporal para la operacion
+        self.temporary.append(self.temporaryGenerator.get_temporal())
+
+        # Escribe en el archivo de salida la suma/resta de los terminos igualados a un temporal generado
+        self.file.write(f'{self.temporary[-1]} = {self.operating1} {self.operator} {self.operating2}\n')
+
+        # Si el hijo 2 (igualdad) no es vacio, hay mas operaciones de comparacion de igualdad
+        if ctx.getChild(2).getChildCount() != 0:
+            # Genero un temporal para guardar el resultado de la sigueinte operacion
+            temporal = self.temporaryGenerator.get_temporal()
+
+            # Operando1 para la siguiente operacion sera el temporal generado en la operacion actual
+            self.operating1 = self.temporary.pop()
+
+            # Agrego el temporal generado a la lista de temporales
+            self.temporary.append(temporal)
+
+            # Visita Igualdad para obtener el resultado de la siguiente operacion de suma/resta
+            self.visitEquality(ctx.getChild(2))
+
 
     # Visit a parse tree produced by compiladoresParser#c.
     def visitC(self, ctx:compiladoresParser.CContext):
-        self.visitExp(ctx.getChild(0))
-        return
 
-    # Visit a parse tree produced by compiladoresParser#exp.
-    def visitExp(self, ctx:compiladoresParser.ExpContext):
-        self.visitTerm(ctx.getChild(0))
-        return
+        """ ------------------------------------------ Funcion --------------------------------------------------- """
+        def visit_expression (ctx):
+            """ 
+                Visita la regla gramatical Exp, y evalua si la bandera para el segundo recorrido esta activa para 
+                sumar/restar los terminos obtenidos en la primera pasada
+            """
+            
+            # Visita Exp
+            self.visitExp(ctx.getChild(0))
 
-    # Visit a parse tree produced by compiladoresParser#term.
-    def visitTerm(self, ctx:compiladoresParser.TermContext):
-        self.visitFactor(ctx.getChild(0))
-        return
+            # Si la bandera es True recorro el arbol para sumar los terminos
+            if self.isAdder:
+                self.visitExp(ctx.getChild(0)) # Los terminos se encuentran dentro de Exp (expresion)
+                self.isAdder = False # Reseteo la bandera
+            """ -------------------------------------- Fin de la Funcion --------------------------------------------- """
+            
+        # Si el hijo 1 (Comparar) no es vacio, entonces hay una operacion de comparacion
+        if ctx.getChild(1).getChildCount() != 0:
+            # Si el hijo 0 (Exp) tiene un hijo 1 (E) vacio, entonces no hay operacion de suma/resta
+            cond1 = ctx.getChild(0).getChild(1).getChildCount() == 0
 
-    # Visit a parse tree produced by compiladoresParser#factor.
-    def visitFactor(self, ctx:compiladoresParser.FactorContext):
-        if ctx.getChildCount() == 1:
-            id = self._identificadores.pop()
-            self.file.write(id + '=' + ctx.getChild(0).getText() + '\n')
-            return
+            # Si el hijo 0 (Exp) tiene un hijo 0 (Term) tiene un hijo 1 (T) vacio, entonces es un termino simople
+            cond2 = ctx.getChild(0).getChild(0).getChild(1).getChildCount() == 0
 
-    # Visit a parse tree produced by compiladoresParser#asignacion.
-    def visitAssignment(self, ctx:compiladoresParser.AssignmentContext):
-        self._identificadores.append(ctx.getChild(0).getText())
-        self.visitOpal(ctx.getChild(2))
-        # Cuando la asignacion no es directa (uso temporales)
-        return
+            # Entonces si ambas se cumplen:
+            if cond1 and cond2:
+                visit_expression(ctx)
+            
+            # De lo contrario
+            else:
+                visit_expression(ctx)
+                self.operating1 = self.temporary.pop(0)
+            
+            # Visito Comparar en busca de operaciones de comparacion
+            self.visitComparity(ctx.getChild(1))
+
+        # De lo contrario no hay mas comparaciones
+        else:
+            visit_expression(ctx)
+
     
-    # def visitDeclaration(self, ctx: compiladoresParser.DeclaracionContext):
-    #     # No accede mediante el 'super()' sino mediante el metodo para obtener los hijos (nodos del arbol)
-    #     print(ctx.getChild(0).getText() + " - " +   # Quiero ver el tipo de dato
-    #           ctx.getChild(1).getText())            # Quiero ver el ID
 
-    #     # return super().visitDeclaration(ctx)
-    #     return None
 
-    # def visitBloque(self, ctx: compiladoresParser.BloqueContext):
-    #     print("Nuevo Contexto")
-    #     print(ctx.getText())
-    #     return super().visitInstructions(ctx.getChild(1))
-    #     # return super().visitBloque(ctx)
-
-    # def visitTerminal(self, node):
-    #     print(" ==> Token " + node.getText())
-    #     return super().visitTerminal(node)
