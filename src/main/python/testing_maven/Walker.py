@@ -354,7 +354,7 @@ class Walker(compiladoresVisitor):
     # Visit a parse tree produced by compiladoresParser#c.
     def visitC(self, ctx:compiladoresParser.CContext):
 
-        """ ------------------------------------------ Funcion --------------------------------------------------- """
+        """ ------------------------------------------ Function --------------------------------------------------- """
         def visit_expression (ctx):
             """ 
                 Visita la regla gramatical Exp, y evalua si la bandera para el segundo recorrido esta activa para 
@@ -367,6 +367,7 @@ class Walker(compiladoresVisitor):
             # Si la bandera es True recorro el arbol para sumar los terminos
             if self.isAdder:
                 self.visitExp(ctx.getChild(0)) # Los terminos se encuentran dentro de Exp (expresion)
+                # super().visitExp(ctx) # Los terminos se encuentran dentro de Exp (expresion)
                 self.isAdder = False # Reseteo la bandera
             """ -------------------------------------- Fin de la Funcion --------------------------------------------- """
             
@@ -394,6 +395,170 @@ class Walker(compiladoresVisitor):
         else:
             visit_expression(ctx)
 
-    
+    # Visit a parse tree produced by compiladoresParser#comparar.
+    def visitComparity(self, ctx:compiladoresParser.ComparityContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount == 0:
+            return
+        
+        """ ------------------------------------------ Function --------------------------------------------------- """
+        def visit_expression (ctx):
+            """ 
+                Visita la regla gramatical Exp, y evalua si la bandera para el segundo recorrido esta activa para 
+                sumar/restar los terminos obtenidos en la primera pasada
+            """
 
+            # Visita Exp
+            self.visitExp(ctx.getChild(1))
+
+            # Si la bandera es True recorro el arbol para sumar los terminos
+            if self.isAdder:
+                self.visitExp(ctx.getChild(1)) # Los terminos se encuentran dentro de Exp (expresion)
+                # super().visitExp(ctx) # Los terminos se encuentran dentro de Exp (expresion)
+                self.isAdder = False # Reseteo la bandera
+        """ -------------------------------------- Fin de la Funcion --------------------------------------------- """
+
+        # Guardo el valor del operando1
+        operating1 = self.operating1
+
+        # Si el hijo 1 (Exp) tiene un hijo 1 (E) vacio, entonces no hay operacion de suma/resta
+        cond1 = ctx.getChild(1).getChild(1).getChildCount() == 0
+
+        # Si el hijo 1 (Exp) tiene un hijo 0 (Term) tiene un hijo 1 (T) vacio, entonces es un termino simople
+        cond2 = ctx.getChild(1).getChild(0).getChild(1).getChildCount() == 0
+
+        # Entonces si ambas se cumplen:
+        if cond1 and cond2:
+            visit_expression(ctx)
+            
+            # Como Exp es llamada dentro de Comparar, el operando1 obtenido es el operando2
+            self.operating2 = self.operating1
+
+        # De lo contrario, hay una operacion de suma/resta guardada
+        else:
+            visit_expression(ctx)
+            self.operating2 = self.temporary.pop(0)
+
+        # Restauro el valor original del operando1
+        self.operating1 = operating1
+
+        # Guardo el operador de comparacion
+        self.operator = ctx.getChild(0).getText()
+
+        # Genera el temporal para trabajar con la operacion actual
+        self.temporary.append(self.temporaryGenerator.get_temporal())
+
+        # Escribo en el archivo la operacion de comparacion igualada a un temporal
+        self.file.write(f'{self.temporary[-1]} = {self.operating1} {self.operator} {self.operating2}\n')
+
+        # Si el hijo 2 (Comparar) no es vacio, hay una operacion de comparacion
+        if ctx.getChild(2).getChildCount() != 0:
+
+            # El ultimo temporal de la lista, sera el primer operando para la siguiente operacion
+            self.operating1 = self.temporary.pop()
+
+            # Visito el hijo 2 (Comparar)
+            self.visitComparity(ctx.getChild(2))
+
+    # Visit a parse tree produced by compiladoresParser#exp.
+    def visitExp(self, ctx:compiladoresParser.ExpContext):
+
+        # Si el hijo 1 (E) no es vacio, entonces hay una operacion de suma/resta
+        if ctx.getChild(1).getChildCount() != 0:
+            # Si la bandera es True, estoy en la segunda pasada encargada de sumar los terminos (temporales y factores)
+            if self.isAdder:
+                # Si el hijo 0 (Term) tiene un hijo 1 (T) que esta vacio, entonces el termino es un factor y no una operacion de multiplicacion/division
+                if ctx.getChild(0).getChild(1).getChildCount() == 0:
+                    # Visita Term para obtener operando1 que es un termino simple (factor, es decir, un numero o un id)
+                    self.visitTerm(ctx.getChild(0)) 
+
+                # De lo contrario el hijo 0 (Term) es un termino compuesto el cual se guardo en la lista de temporales
+                else:
+                    self.operating1 = self.temporary.pop(0)
+
+                # Visita el hijo 1 (E) para obtener operando2 y el operador de suma/resta
+                self.visitE(ctx.getChild(1))
+            # Si la bandera es False, estoy en la primera pasada en busca operaciones de multiplicacion/division
+            else:
+                # Si es un termnino compuesto (x * y) visito Term para generar los temporales correspondientes
+                if ctx.getChild(0).getChild(1).getChildCount() != 0:
+                    # Visito Primero Term en busca de operaciones de multiplicacion/division
+                    self.visitTerm(ctx.getChild(0))
+
+                # Visito E en busca de operaciones de multiplicacion/division
+                self.visitE(ctx.getChild(1))
+
+                # Como primero busco operaciones de multiplicacion/division y existen sumas/restas debo sumar los terminos
+                self.isAdder = True
+                # Al activar esta bandera se realizara la segunda pasada para sumar los terminos invocada por la regla gramatical C
+
+        # De lo contrario no hay mas sumas/restas y visita el unico termino de la operacion
+        else:                
+            self.visitTerm(ctx.getChild(0))
+
+    # Visit a parse tree produced by compiladoresParser#e.
+    def visitE(self, ctx:compiladoresParser.EContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        # Si la bandera esta activa, entonces estoy en la segunda pasada encargada de sumar/restar los terminos
+        if self.isAdder:
+            # Guarda el valor actual del operando1 que bien puede ser un termino simple o un temporal
+            operating1 = self.operating1
+
+            # Si el hijo 1 (Term) tiene un hijo 1 (T) que esta vacio, entonces el term es un termino simple
+            if ctx.getChild(1).getChild(1).getChildCount() == 0:
+                # Visita Term para obtener el valor del operando1 (termino simple de un factor)
+                self.visitTerm(ctx.getChild(1))
+
+                # Dentro del hijo (E) trabaja el lado derecho de la suma/resta, por lo tanto el operando1 es en realidad el operando2 de toda la operacion que invoca a (E)
+                self.operating2 = self.operating1
+
+            # De lo contrario el hijo 1 (Term) tiene un hijo 1 (T) que no esta vacio, entonces es un termino compuesto (temporal)
+            else:
+                # Como estoy en E, el operando2 es el valor del temporal que se creo en la primera pasada (resultados de las multiplicaciones/divisiones)
+                self.operating2 = self.temporary.pop(0)
+
+            # Guarda el operador de suma/resta de la operacion actual
+            self.operator  = ctx.getChild(0).getText()
+
+            # Reasigno el valor original del operando1
+            self.operating1 = operating1
+
+            # Genera el temporal para trabajar con la operacion actual
+            self.temporary.append(self.temporaryGenerator.get_temporal())
+
+            # Escribe en el archivo de salida la suma/resta de los terminos igualados a un temporal generado
+            self.file.write(f'{self.temporary[-1]} = {self.operating1} {self.operator} {self.operating2}\n')
+
+            # Si el hijo 2 (E) no es vacio, hay mas operaciones de suma/resta
+            if ctx.getChild(2).getChildCount() != 0:
+
+                # Operando1 para la siguiente operacion sera el temporal generado en la operacion actual
+                self.operating1 = self.temporary.pop()
+
+                # Visita E para obtener el resultado de la siguiente operacion de suma/resta
+                self.visitE(ctx.getChild(2))
+
+        # De lo contrario, estoy en la primera pasada en busca de operaciones de multiplicacion/division
+        else:
+            # Si el hijo 2 (E) no es vacio, entonces hay una operacion de suma/resta. Esto significa que tengo 2 o mas sumas/restas
+            if ctx.getChild(2).getChildCount() != 0:
+
+                # Si es un termino compuesto (x * y), lo visito para generar el temporal de la operacion
+                if ctx.getChild(1).getChild(1).getChildCount() != 0:
+                    self.visitTerm(ctx.getChild(1))
+
+                # Visita E en busca de la siguiente operacion de suma/resta
+                self.visitE(ctx.getChild(2))
+
+            # De lo contrario no hay mas operaciones de suma/resta
+            else:
+                # Si es un termino compuesto (x * y) lo visito en busca de operaciones de creacion de temporales
+                if ctx.getChild(1).getChild(1).getChildCount() != 0:
+                    self.visitTerm(ctx.getChild(1))
+
+    
+        
 
