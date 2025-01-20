@@ -47,15 +47,19 @@ class Walker(compiladoresVisitor):
         print("-- Codigo Intermedio generado Correctamente --")
         print("-" + "=" * 30 + "-")
 
-    # Visit a parse tree produced by compiladoresParser#instructions.
-    def visitInstructions(self, ctx:compiladoresParser.InstructionsContext):
-        self.visitInstruction(ctx.getChild(0))
+    # # Visit a parse tree produced by compiladoresParser#instrucciones.
+    # def visitInstructiones(self, ctx:compiladoresParser.InstruccionesContext):
+    #     return self.visitChildren(ctx)
 
-        if ctx.getChild(1).getChildCount() != 0:
-            self.visitInstructions(ctx.getChild(1))
 
-        if ctx.getChildCount() == 0:
-            return
+    # # Visit a parse tree produced by compiladoresParser#instruccion.
+    # def visitInstruccion(self, ctx:compiladoresParser.InstruccionContext):
+    #     return self.visitChildren(ctx)
+
+
+    # # Visit a parse tree produced by compiladoresParser#bloque.
+    # def visitBloque(self, ctx:compiladoresParser.BloqueContext):
+    #     return self.visitChildren(ctx)
 
     # Visit a parse tree produced by compiladoresParser#declaration.
     def visitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
@@ -85,16 +89,6 @@ class Walker(compiladoresVisitor):
         
         if ctx.getChild(3).getChildCount() != 0:
             self.visitVarlist(ctx.getChild(3))
-
-    
-    # Visit a parse tree produced by compiladoresParser#instruction.
-    def visitInstruction(self, ctx:compiladoresParser.InstructionContext):
-        if isinstance (ctx.getChild(0), compiladoresParser.DeclarationContext):
-            self.visitDeclaration(ctx.getChild(0))
-        elif isinstance (ctx.getChild(0), compiladoresParser.AssignmentContext):
-            self.visitAssignment(ctx.getChild(0))
-        else:
-            return
 
 
     # Visit a parse tree produced by compiladoresParser#definition.
@@ -480,7 +474,7 @@ class Walker(compiladoresVisitor):
                 self.visitE(ctx.getChild(1))
             # Si la bandera es False, estoy en la primera pasada en busca operaciones de multiplicacion/division
             else:
-                # Si es un termnino compuesto (x * y) visito Term para generar los temporales correspondientes
+                # Si es un termino compuesto (x * y) visito Term para generar los temporales correspondientes
                 if ctx.getChild(0).getChild(1).getChildCount() != 0:
                     # Visito Primero Term en busca de operaciones de multiplicacion/division
                     self.visitTerm(ctx.getChild(0))
@@ -559,6 +553,127 @@ class Walker(compiladoresVisitor):
                 if ctx.getChild(1).getChild(1).getChildCount() != 0:
                     self.visitTerm(ctx.getChild(1))
 
-    
+    # Visit a parse tree produced by compiladoresParser#term.
+    def visitTerm(self, ctx:compiladoresParser.TermContext): 
+        # Guardo el primer operando de la operacion de multiplicacion/division
+        self.operating1 = self.visitFactor(ctx.getChild(0))
+
+        # Si el hijo 1 no es vacio, entonces hay una operacion de multiplicacion/division
+        if ctx.getChild(1).getChildCount() != 0:
+            # Visita la regla gramatical T
+            self.visitT(ctx.getChild(1))
+
+    # Visit a parse tree produced by compiladoresParser#t.
+    def visitT(self, ctx:compiladoresParser.TContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        # Guardo el segundo operando de la operacion de multiplicacion/division
+        self.operating2 = self.visitFactor(ctx.getChild(1))
+
+        # Guardo el operador de la operacion de multiplicacion/division
+        self.operator   = ctx.getChild(0).getText()
+
+        # Genero un temporal para la operacion actual
+        self.temporary.append(self.temporaryGenerator.get_temporal())
+
+        # Escribo en el archivo la operacion de multiplicacion/division igualada a un temporal
+        self.file.write(f'{self.temporary[-1]} = {self.operating1} {self.operator} {self.operating2}\n')
+
+        # Si el hijo 2 (T) no es vacio, hay una operacion de multiplicacion/division
+        if ctx.getChild(2).getChildCount() != 0:
+            # El ultimo temporal de la lista, sera el primer operando para la siguiente operacion
+            self.operating1 = self.temporary.pop()
+
+            # Visito el hijo 2 (T)
+            self.visitT(ctx.getChild(2))
+
+    # Visit a parse tree produced by compiladoresParser#factor.
+    def visitFactor(self, ctx:compiladoresParser.FactorContext):
+        # Si Factor tiene 1 hijo, entonces es un factor simple (un numero o un id)
+        if ctx.getChildCount() == 1:
+            # operando sera un factor simple, es decir o un id o un numero
+            operating = ctx.getChild(0).getText()
+
+            # retorno el operando esperado en la operacion de multiplicacion/division invocante
+            return operating
+        
+        # Si Factor tiene 2 hijos, entonces es un factor negado
+        elif ctx.getChildCount() == 2:
+
+            # Obtengo el valor del factor negado
+            value = self.visitFactor(ctx.getChild(1))
+
+            # Guardo el operador de negacion
+            denial_operator = ctx.getChild(0).getText()
+
+            # Genero un temporal para la operacion de negacion
+            self.temporary.append(self.temporaryGenerator.get_temporal())
+
+            # Escribo en el archivo la operacion
+            self.file.write(f'{self.temporary[-1]} = {denial_operator}{value}\n')
+
+            # Devuelvo el temporal creado
+            return self.temporary.pop()
+        
+        # Si Factor tiene 3 hijos, entonces es una operacion entre parentesis
+        elif ctx.getChildCount() == 3:
+            # Guardo el valor actual del operando1 ya que sera sobreescrita en la sig. invocacion
+            operating1 = self.operating1
+
+            if self.isAdder:
+                self.isAdder = False
+
+                # Visito la regla gramatical Oplogicos
+                self.visitOplogic(ctx.getChild(1))
+
+                self.isAdder = True
+            else:
+                # Visito la regla gramatical Oplogicos
+                self.visitOplogic(ctx.getChild(1))
+
+            # Recupero el valor del operando1
+            self.operating1 = operating1
+
+            # Retorno el ultimo temporal de la lista
+            return self.temporary.pop()
+
+    # Visit a parse tree produced by compiladoresParser#iwhile.
+    def visitWhilei(self, ctx:compiladoresParser.WhileiContext):
+        # Genero la etiqueta para el salto condicional del bucle While
+        self.labels.append(self.LabelsGenerator.get_label())
+
+        # Escribo en el archivo la etiqueta para iniciar el bucle while
+        self.file.write(f'{self.label} {self.labels[-1]}\n')
+
+        # Visito la Regla Cond, en busca de la condicion del bucle While
+        self.visitCondition(ctx.getChild(2))
+
+        if self.temporary:
+            # Genero la etiqueta para finalizar el bucle while
+            self.labels.append(self.LabelsGenerator.get_label())
+
+            # Escribo en el archivo el salto condicional del bucle While
+            self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n')
+
+            # Visito la Regla Instruccion, para escribir en el archivo la instruccion del bucle While
+            self.visitInstruction(ctx.getChild(4))
+
+            # Escribo en el archivo el salto al final del bucle While
+            self.file.write(f'{self.b} {self.labels.pop(0)}\n')
+
+            # Escribo en el archivo la etiqueta para salir del bucle while
+            self.file.write(f'{self.label} {self.labels.pop(0)}\n')
+
+        # """ Revisar para bucles infinitos """
+        else:
+            # Visito la Regla Instruccion, para escribir en el archivo la instruccion del bucle While
+            self.visitInstruction(ctx.getChild(4))
+
+            # Escribo en el archivo el salto al final del bucle While
+            self.file.write(f'{self.b} {self.labels.pop(0)}\n')
+
+
         
 
