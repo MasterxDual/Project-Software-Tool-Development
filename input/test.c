@@ -2,6 +2,45 @@
 #include <math.h>
 
 void main() {
+        // Aciones que siempre se ejcutan al menos una vez en el for: 'i = 0; i < x;':
+
+    int x = 10;
+    int y = 5;
+    int z = 1;
+    int i;
+
+    // for (i = 0; i < x; i = i + 1)
+	// y = z * x;
+
+    /*     
+    
+    i = 0
+    label l0      // Etiqueta para volver a evaluar la condicion (se ejecuta al menos una vez)
+    t0 = i < x    // Condicion del 'for'
+    ifnjmp t0, l1 // si es verdadero continua, de lo contrario salta a 'l1'
+    t1 = z * x
+    y = t1
+    // Accion post-ejecucion (puede no hacerce: 'i = i + 1');
+    t2 = i + 1
+    i = t2
+    jmp l0         // salta a la etiqueta 'l0'
+    label l1
+    
+    */
+
+    for (;;) {
+        y = z * x;
+    }
+
+
+    /* 
+    
+    label l0     // Etiqueta para el inicio del bucle
+    t1 = z * x   // Cuerpo del bucle
+    y = t1
+    jmp l0       // Salto incondicional al inicio del bucle para repetir indefinidamente
+    // No hay etiqueta de fin, ya que el bucle es infinito
+     */
     // int a = 0, b = 2;
 
     // int t = a || b;   
@@ -27,11 +66,11 @@ void main() {
     // jmp l0
     // label l1
 
-    int w = 2;
+    // int w = 2;
 
-    while (1 + 2) {
-        w = w + 1;
-    }
+    // while (1 + 2) {
+    //     w = w + 1;
+    // }
 
 
     /* 

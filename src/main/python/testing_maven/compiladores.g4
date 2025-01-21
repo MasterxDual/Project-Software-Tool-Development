@@ -208,10 +208,15 @@ ifi: IF LPAR condition RPAR instruction;
 elsei: ifi ELSE instruction;
 
 //For loop
-fori: FOR LPAR init SEMI condition SEMI iter RPAR instruction;
+fori: FOR LPAR init SEMI condition_for SEMI iter RPAR instruction;
 
-//Condition of the for and while
+//Condition of while and if
 condition: oplogic;
+
+//Conditional of for
+condition_for: oplogic
+            |
+            ;
 
 //Initialization
 init: assignment
@@ -224,6 +229,7 @@ iter: ID INC
     | INC ID
     | DEC ID
     | assignment
+    |
     ;
 
 returning: RETURN oplogic;
