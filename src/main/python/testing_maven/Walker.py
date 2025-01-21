@@ -752,7 +752,55 @@ class Walker(compiladoresVisitor):
             # Escribo en el archivo, la asignacion del temporal a la variable
             self.file.write(f'{id} =  {self.temporary.pop()}\n')
 
+    # Visit a parse tree produced by compiladoresParser#iif.
+    def visitIfi(self, ctx:compiladoresParser.IfiContext):
+        # Visito la Regla Cond, en busca de la condicion del if
+        self.visitCondition(ctx.getChild(2))
 
+        # Si el if fue invocado por un else
+        if isinstance(ctx.parentCtx, compiladoresParser.ElseiContext):
+            # Escribo en el archivo el salto condicional del if
+            self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n')
+
+            # Visito la Regla Instruccion, para escribir en el archivo la instruccion del if
+            self.visitInstruction(ctx.getChild(4))
+
+            # Genero la etiqueta para salir del if
+            self.labels.append(self.LabelsGenerator.get_label())  
+
+            # Escribo en el archivo el salto para salir del if
+            self.file.write(f'{self.b} {self.labels[-1]}\n')
+
+        # De lo contrario, es un condicional if solo
+        else:
+            # Genero la etiqueta para salir del if
+            self.labels.append(self.LabelsGenerator.get_label())
+
+            # Escribo en el archivo el salto condicional del if
+            self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n')
+
+            # Visito la Regla Instruccion, para escribir en el archivo la instruccion del if
+            self.visitInstruction(ctx.getChild(4))
+
+            # Escribo en el archivo la etiqueta para salir del else
+            self.file.write(f'{self.label} {self.labels.pop()}\n')
+
+     # Visit a parse tree produced by compiladoresParser#ielse.
+    def visitElsei(self, ctx:compiladoresParser.ElseiContext):
+        # Genero la etiqueta para el salto condicional del if
+        self.labels.append(self.LabelsGenerator.get_label())
+
+        # Visito el if por que de lo contrario no puede existir el else
+        self.visitIfi(ctx.getChild(0))
+
+        # Escribo en el archivo el salto condicional del if
+        self.file.write(f'{self.label} {self.labels.pop(0)}\n')
+
+        # Visito la Regla Instruccion, para escribir en el archivo la instruccion del else
+        self.visitInstruction(ctx.getChild(2))
+
+        # Escribo en el archivo la etiqueta para salir del else
+        self.file.write(f'{self.label} {self.labels.pop()}\n')
 
 
         

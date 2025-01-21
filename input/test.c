@@ -7,7 +7,28 @@ void main() {
     int x = 10;
     int y = 5;
     int z = 1;
-    int i;
+
+    if (x > 0)
+	    y = z * 2;
+    else
+	    y = z / 2;
+
+    /* Esto se traduce como */
+/* 
+    // if:
+    t0 = x > 0
+    ifnjmp t0, l0  // Si 't0' es verdadero ejecuta las instrucciones del 'if', en cambio si 't0' es falso saltamos a                   //'l0' que es la etiqueta del 'else'. Entonces cuando haya 'if' hay que preveer la creacion de una                  // etiqueta y para el 'else' dos. 
+    t1 = z * 2
+    y = t1
+    jmp l1 // etiqueta de salto
+    // else:
+    label l0
+    t2 = z / 2
+    y = t2
+    label l1
+ */
+
+
 
     // for (i = 0; i < x; i = i + 1)
 	// y = z * x;
@@ -28,9 +49,9 @@ void main() {
     
     */
 
-    for (;;) {
+   /*  for (;;) {
         y = z * x;
-    }
+    } */
 
 
     /* 
