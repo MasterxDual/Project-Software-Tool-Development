@@ -26,10 +26,11 @@ class Walker(compiladoresVisitor):
         self.temporaryGenerator   = Temporal()
         self.LabelsGenerator    = Label()
 
-        self.operating1               = None
-        self.operating2               = None
+        self.operating1             = None
+        self.operating2             = None
         self.operator               = None
-        self.isAdder               = False
+        self.isAdder                = False
+        self.isFunction             = False
 
         # Constantes Codigo Intermedio de Tres Direcciones
         self.label   = 'label'
@@ -167,6 +168,14 @@ class Walker(compiladoresVisitor):
             # En caso contrario, operando1 es el primer factor, el valor queda como esta
             
             self.visitLor(ctx.getChild(1))
+
+        # Evalua si es una llamada a funcion
+        if self.isFunction:
+            if self.temporary:
+                self.file.write(f"push {self.temporary.pop()}\n")
+            else:
+                self.file.write(f"push {self.operating1}\n")
+
 
     # Visit a parse tree produced by compiladoresParser#lor.
     def visitLor(self, ctx:compiladoresParser.LorContext):
@@ -803,5 +812,102 @@ class Walker(compiladoresVisitor):
         self.file.write(f'{self.label} {self.labels.pop()}\n')
 
 
+    # Visit a parse tree produced by compiladoresParser#prototipo_funcion.
+    def visitFunction_prototype(self, ctx:compiladoresParser.Function_prototypeContext):
+        # Genero la etiqueta de salto hacia la funcion
+        self.etiquetas.append(self.generadorDeEtiquetas.getEtiqueta())
+
+    # Visit a parse tree produced by compiladoresParser#funcion.
+    def visitFunction(self, ctx:compiladoresParser.FunctionContext):
+        if ctx.getChild(1).getText() != 'main':
+            self.file.write('-------- FUNCION --------\n')
+
+            # Escribo en el archivo la etiqueta de salto hacia la funcion
+            self.file.write(f'{self.label} {self.labels.pop(0)}\n')
+
+            self.file.write(f'pop {self.labels[-1]}\n')
+
+            """ Evaluar cuando no tiene argumentos """
+            # Visito la Regla Argunementos para obtener los argumentos de la funcion
+            self.visitArguments(ctx.getChild(3))
+
+            self.visitBlock(ctx.getChild(5))
+
+            self.file.write(f'push {self.temporary.pop()}\n')
+
+            self.file.write(f'{self.b} {self.labels.pop()}\n')
+
+        else:
+            self.visitBlock(ctx.getChild(5))
+
+    # Visit a parse tree produced by compiladoresParser#argumentos.
+    def visitArguments(self, ctx:compiladoresParser.ArgumentsContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
         
+        self.file.write(f'pop {ctx.getChild(1).getText()}\n')
+
+        if ctx.getChild(2).getChildCount() != 0:
+            self.visitArguments_list(ctx.getChild(2))
+
+    
+    # Visit a parse tree produced by compiladoresParser#lista_argumentos.
+    def visitArguments_list(self, ctx:compiladoresParser.Arguments_listContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+
+        self.file.write(f'pop {ctx.getChild(2).getText()}\n')
+
+        if ctx.getChild(3).getChildCount() != 0:
+            self.visitArguments_list(ctx.getChild(3))
+
+    # Visit a parse tree produced by compiladoresParser#llamada_funcion_valor.
+    def visitFunction_call_value(self, ctx:compiladoresParser.Function_call_valueContext):
+        self.visitFunction_call(ctx.getChild(2))
+        self.file.write(f'pop {ctx.getChild(0).getText()}\n')
+
+    # Visit a parse tree produced by compiladoresParser#llamada_funcion.
+    def visitFunction_call(self, ctx:compiladoresParser.Function_callContext):
+        self.file.write('-------- LLAMADA A FUNCION --------\n')
+
+        self.visitArguments_to_function(ctx.getChild(2))
+
+        self.labels.append(self.LabelsGenerator.get_label())
+
+        self.file.write(f'push {self.labels[-1]}\n')
+
+        self.file.write(f'{self.b} {self.labels[-2]}\n')
+
+        self.file.write(f'{self.label} {self.labels[-1]}\n')
+
+    # Visit a parse tree produced by compiladoresParser#argumentos_a_funcion.
+    def visitArguments_to_function(self, ctx:compiladoresParser.Arguments_to_functionContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        self.isFunction = True
+
+        self.visitOplogic(ctx.getChild(0))
+
+        if ctx.getChild(1).getChildCount() != 0:
+            self.visitArguments_to_function_list(ctx.getChild(1))
+
+        self.isFunction = False
+
+    # Visit a parse tree produced by compiladoresParser#lista_argumentos_a_funcion.
+    def visitArguments_to_function_list(self, ctx:compiladoresParser.Arguments_to_function_listContext):
+        # Valida que la regla gramatical no este vacia
+        if ctx.getChildCount() == 0:
+            return
+        
+        self.visitOplogic(ctx.getChild(1))
+
+        if ctx.getChild(2).getChildCount() != 0:
+            self.visitArguments_to_function_list(ctx.getChild(2))
+
+
+
 
