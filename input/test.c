@@ -4,20 +4,36 @@
 int f(int a, int b);
 
 void main() {
-    // Aciones que siempre se ejcutan al menos una vez en el for: 'i = 0; i < x;':
+    // Acciones que siempre se ejcutan al menos una vez en el for: 'i = 0; i < x;':
 
-    int x = 0;
+    char w = 0;
+    double x = w;
+    int e = x;
     int o = 10;
-    int p = 5;
+    int p = 20;
 
-    /* Invoacaion de funciones */
+    /* Invocacion de funciones */
     x = f(o, p);
 }
+int a = 9;
 
 /* FUNCIONES */
-int f (int a, int b) {
-    return a + b;
+int f (int a, int c) {
+    return a + c;
 }
+
+/* 
+int funcion (int a){
+    int a; <----- ERROR
+    return;
+}
+
+float a = 0;
+int b = a; <------ ADVERTENCIA
+
+(Usar ENUM para castear el tipo por orden de jerarquia)
+si hay errores el visitor no funciona
+*/  
 
     /* 
     ...
