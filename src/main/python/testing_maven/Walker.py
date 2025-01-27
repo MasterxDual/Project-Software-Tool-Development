@@ -71,20 +71,21 @@ class Walker(compiladoresVisitor):
         if ctx.getChild(2).getChildCount() != 0:
             self.visitDefinition(ctx.getChild(2))
 
-            # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
-            if self.temporales:
-                self.file.write(f"{_id} = {self.temporary.pop()}\n\n")
-                
-            # De la contrario la variable solo almacena un factor
-            else:
-                self.file.write(f"{_id} = {self.operating1}\n\n")
+            if not ctx.getChild(2).function_call():
+                # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
+                if self.temporary:
+                    self.file.write(f"{id} = {self.temporary.pop()}\n\n")
+                    # self.temporales.clear()
+                # De lo contrario la variable solo almacena un factor
+                else:
+                    self.file.write(f"{id} = {self.operating1}\n\n")
 
-            # Reseteo los elementos para las operaciones
-            self.operating1 = None
-            self.operating2 = None
-            self.operator  = None
+                # Reseteo los los elementos para las operaciones
+                self.operating1 = None
+                self.operating2 = None
+                self.operator  = None
 
-        # De lo contrario solo se declaro la varible vacia
+        # De lo contrario solo se declaro la variable vacia
         else:
             self.file.write(f'Declaracion de la variable {_id}\n')
         
@@ -98,7 +99,14 @@ class Walker(compiladoresVisitor):
         if ctx.getChildCount() == 0:
             return
         
-        self.visitOpal(ctx.getChild(1))
+        # Si la definicion es una llamada a funcion:
+        if ctx.function_call():
+            self.visitFunction_call(ctx.getChild(1))
+            self.file.write(f'pop {ctx.parentCtx.getChild(1).getText()}\n')
+        
+        # De lo contrario solo es una asignacion
+        else:
+            self.visitOpal(ctx.getChild(1))
 
     # Visit a parse tree produced by compiladoresParser#varList.
     def visitVarlist(self, ctx:compiladoresParser.VarlistContext):
@@ -820,7 +828,7 @@ class Walker(compiladoresVisitor):
     # Visit a parse tree produced by compiladoresParser#funcion.
     def visitFunction(self, ctx:compiladoresParser.FunctionContext):
         if ctx.getChild(1).getText() != 'main':
-            self.file.write('-------- FUNCION --------\n')
+            # self.file.write('-------- FUNCION --------\n')
 
             # Escribo en el archivo la etiqueta de salto hacia la funcion
             self.file.write(f'{self.label} {self.labels.pop(0)}\n')
@@ -870,7 +878,7 @@ class Walker(compiladoresVisitor):
 
     # Visit a parse tree produced by compiladoresParser#llamada_funcion.
     def visitFunction_call(self, ctx:compiladoresParser.Function_callContext):
-        self.file.write('-------- LLAMADA A FUNCION --------\n')
+        # self.file.write('-------- LLAMADA A FUNCION --------\n')
 
         self.visitArguments_to_function(ctx.getChild(2))
 

@@ -129,8 +129,8 @@ datype: INT
       ;
 
 definition: ASSIGN opal
-    |
-    ;
+          | ASSIGN function_call
+          ;
 
 varlist: COMMA ID definition varlist
         |

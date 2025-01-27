@@ -155,11 +155,32 @@ class TheListener(compiladoresListener):
         Método que se ejecuta al salir del contexto de la regla "instruccion".
         Verifica si la instrucción termina con un punto y coma.
         """
-
         # Verifica si el contexto corresponde a uno de estos tipos de instrucción válidos
-        if (ctx.declaration() or ctx.assignment() or ctx.returning() or ctx.function_prototype() or ctx.function_call()):
-            if ctx.getChild(1).getText() != ';': # Si no termina con ';' muestra un error
+        def verifyInstructionContext(ctx):
+            if ctx.declaration():
+                return True
+            elif ctx.assignment():
+                return True
+            elif ctx.returning():
+                return True
+            elif ctx.function_prototype():
+                return True
+            elif ctx.function_call_value():
+                return True
+            elif ctx.function_call():
+                return True
+            else:
+                return False
+                    
+        if ctx.getChildCount() == 2 and ctx.getChild(1).getText() != ";":
+            if verifyInstructionContext(ctx):
                 self.bugReport(ctx, "Sintactico", "se esperaba ';'")
+            else:
+                if ctx.getChild(0).getText() == "if" and ctx.getChild(1).getText() == "(":
+                    self.bugReport(ctx, "Sintactico", f"se esperaba ')' antes de la instruccion")
+                else:
+                    self.bugReport(ctx, "Lexico", f"carácter inválido {ctx.getChild(1).getText()}")
+
 
 
     def enterBlock(self, ctx: compiladoresParser.BlockContext):
@@ -287,7 +308,6 @@ class TheListener(compiladoresListener):
             identifier.set_initialized() # Se inicializa la variable
 
     """----------------------------------------------------------------"""
-    data_type_obtained = None
 
     def exitWhilei(self, ctx:compiladoresParser.WhileiContext):
         """
@@ -370,8 +390,6 @@ class TheListener(compiladoresListener):
         if isinstance(ctx.getChild(2).getChild(0), compiladoresParser.DeclarationContext):
             self.bugReport(ctx, "Sintactico", "Una instrucción dependiente no puede ser una declaración")
             
-    def exitReturning(self, ctx:compiladoresParser.ReturningContext):
-        return
 
     def exitFunction_prototype(self, ctx: compiladoresParser.Function_prototypeContext):
         """
@@ -395,7 +413,7 @@ class TheListener(compiladoresListener):
 
         #Procesamos los argumentos de la funcion, si existen
         # if str(ctx.getChild(3).getText()) != '': #Si la funcion tiene argumentos
-        if ctx.getChild(3).getChildCount != 0:
+        if ctx.getChild(3).getChildCount() != 0:
             for arg in self.stack_arguments:
                 self.actual_function.add_arg(arg)
 
@@ -541,18 +559,7 @@ class TheListener(compiladoresListener):
         else:  # Si la funcion no existe reporta el error
             self.bugReport(ctx, "Semantico", f"Funcion '{function_name}' no fue declarada")
             self.arguments_to_function.clear()
-            
-
-    """ def exitReturning(self, ctx: compiladoresParser.ReturningContext):
-        if ctx.getChild(1).getText() == ctx.
-
-            id_name = ctx.getChild(0).getText()
-            ctx_actual = ctx.parentCtx
-            if isinstance(ctx_actual, compiladoresParser.ReturningContext):
-                id_found = self.symbol_table.local_search(id_name)
-                if id_found is not None:
-                    self.types_list.append(id_found.data_type.name)
-     """            
+                     
 
     def exitArguments_to_function_list(self, ctx: compiladoresParser.Arguments_to_function_listContext):
         """
