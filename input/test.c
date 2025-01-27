@@ -1,26 +1,38 @@
 #include <stdio.h>
 #include <math.h>
 
-int f(int a, int b);
+int main() {
+    int a = 5;
+    int b = 10;
+    int c = 15;
+    int d = 20;
+    int x = 0;
 
-void main() {
-    // Acciones que siempre se ejcutan al menos una vez en el for: 'i = 0; i < x;':
+    x = (a * b - c) + (a * b + d) + a * b;
 
-    char w = 0;
-    double x = w;
-    int e = x;
-    int o = 10;
-    int p = 20;
-
-    /* Invocacion de funciones */
-    x = f(o, p);
+    return 0;
 }
-int a = 9;
 
-/* FUNCIONES */
-int f (int a, int c) {
-    return a + c;
-}
+// int f(int a, int b);
+
+// void main() {
+//     // Acciones que siempre se ejcutan al menos una vez en el for: 'i = 0; i < x;':
+
+//     char w = 0;
+//     double x = w;
+//     int e = x;
+//     int o = 10;
+//     int p = 20;
+
+//     /* Invocacion de funciones */
+//     x = f(o, p);
+// }
+// int a = 9;
+
+// /* FUNCIONES */
+// int f (int a, int c) {
+//     return a + c;
+// }
 
 /* 
 int funcion (int a){

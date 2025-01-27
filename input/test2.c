@@ -7,28 +7,28 @@ int main() {
     double x = w;
     int a, b = 5;
     float c;
-    int array[5];
+    // int array[5];
 
     // Errores Léxicos
-    int €valor = 10;  // Error: carácter inválido €
+    // int €valor = 10;  // Error: carácter inválido €
 
     // Errores Sintácticos
     int p = 0  // Error: falta el punto y coma
-    if (b == 10 {  // Error: paréntesis no balanceados
-        b = 20;
+    // if (b == 10 {  // Error: paréntesis no balanceados
+    //     b = 20;
 
     // Errores Semánticos
-    a = b;  // Error: 'a' no está inicializada
+    a = b;  
     c = d;  // Error: 'd' no está declarada
 
-        // Errores de Ámbito
-    {
-        int e = 10;
-    }
-    e = 20;  // Error: uso de 'e' fuera de su ámbito
+    // Errores de Ámbito
+    // {
+    //     int e = 10;
+    // }
+    // e = 20;  // Error: uso de 'e' fuera de su ámbito
 
     // Errores de Tipo
-    x = a + "cadena";  // Error: tipo incompatible de operación
+    x = a + 'c';  // Error: tipo incompatible de operación
     a = b / 0;  // Advertencia: división por cero
 
     // Advertencias
@@ -36,20 +36,20 @@ int main() {
         // b es igual a 10
     }
 
-    for (int i = 0; i < 10; i++) {
-        int j = i * 2;
-        // El valor de j es: (i*2)
-    }
+    // for (int i = 0; i < 10; i++) {
+    //     int j = i * 2;
+    //     // El valor de j es: (i*2)
+    // }
 
-    int k;
-    for (k = 0; k < 10; k++);  // Advertencia: bucle vacío
+    // int k;
+    // for (k = 0; k < 10; k++);  // Advertencia: bucle vacío
 
     // Punteros
     int *ptr = NULL;
     *ptr = 10;  // Error: desreferencia de puntero nulo
 
     // Arrays
-    array[10] = 5;  // Advertencia: acceso fuera de los límites del array
+    // array[10] = 5;  // Advertencia: acceso fuera de los límites del array
 
     // Conversiones de Tipo
     double result;
@@ -64,7 +64,7 @@ int main() {
     // Advertencia: 'n' no está inicializada
 
     imprimeMensaje();  // Llamada a función antes de declararla
-    int resultado = funcionSuma(a, b);  // Error: llamada a función antes de definirla
+    // int resultado = funcionSuma(a, b);  // Error: llamada a función antes de definirla
 
     return 0;
 }
