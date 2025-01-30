@@ -111,7 +111,6 @@ instruction: declaration SEMI
             | returning SEMI
             | block
             | function
-            | function_call_value SEMI
             | function_call SEMI
             | function_prototype SEMI
             ;
@@ -137,7 +136,9 @@ varlist: COMMA ID definition varlist
         ;
 
 //Assignment or initialization of variables or values
-assignment: ID ASSIGN opal;
+assignment: ID ASSIGN opal
+          | ID ASSIGN function_call
+          ;
 
 //ARITHMETIC AND LOGICAL OPERATIONS
 opal: oplogic;
@@ -236,7 +237,6 @@ returning: RETURN oplogic;
 
 function_prototype: return_value ID LPAR arguments RPAR;
 
-function_call_value: ID ASSIGN function_call;
 
 return_value: datype
             | VOID
