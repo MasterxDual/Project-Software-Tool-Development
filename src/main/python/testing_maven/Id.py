@@ -34,6 +34,8 @@ class DataType(Enum):
 
 
 class Id(ABC):
+    my_context = None
+
     def __init__(self, name: str, data_type: DataType):
         self._name = name
         self._data_type = data_type
