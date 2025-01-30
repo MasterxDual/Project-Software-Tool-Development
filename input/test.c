@@ -1,17 +1,100 @@
 #include <stdio.h>
 #include <math.h>
 
+int w;
+
+int f (int d, int c);
+
 int main() {
-    int a = 5;
-    int b = 10;
-    int c = 15;
-    int d = 20;
-    int x = 0;
+    int x, o = 5, p = 10;
 
-    x = (a * b - c) + (a * b + d) + a * b;
+    int a = 5 + 3 - 4;
 
-    return 0;
+    a = a + 2;
+
+    int y = a;
+
+
+    x = f(o, p);
+
+    return x;
 }
+
+float value = 5;
+
+int f (int a, int b) {
+    int b = 10;
+	return a + b;
+}
+
+// int d () {
+//     return 12;
+// }
+
+// int main () {
+
+//     // int a = 5;
+//     // int b = 10;
+//     // int c = 15;
+//     // int d = 20;
+//     // int x = 0;
+
+//     // x = (a * b - c) + (a * b + d) + a * b;
+
+//     // int x = 1;
+
+//     // x = x * 2;
+
+//     // x = x * 2;
+
+//     // int y = x + 2;
+
+//     // int x, y, z;
+    
+    
+//     // x = 5;
+//     // y = x * 2 - 10;
+//     // z = y + x;
+
+//     // int x, y, z;
+    
+//     int x, y, z;
+    
+//     x = 5;
+//     y = x * 2 - 10;
+//     z = y + x;
+
+//     x = x + 1;
+
+//     while (1) {
+//         x = x + 1;
+//     }
+
+//     for (;;) {
+//         x = x + 1;
+//     }
+//     /* 
+    
+//     x = 1
+
+//     label l0
+//     t3 = x + 1
+//     x = t3
+
+//     jmp l0
+
+//     OPTIMIZADO
+
+//     x = 1
+
+//     label l0
+//     x = 2
+
+//     jmp l0
+//      */
+//     return 0;
+// }
+
 
 // int f(int a, int b);
 

@@ -45,8 +45,8 @@ int main() {
     // for (k = 0; k < 10; k++);  // Advertencia: bucle vacío
 
     // Punteros
-    int *ptr = NULL;
-    *ptr = 10;  // Error: desreferencia de puntero nulo
+    // int *ptr = NULL;
+    // *ptr = 10;  // Error: desreferencia de puntero nulo
 
     // Arrays
     // array[10] = 5;  // Advertencia: acceso fuera de los límites del array
@@ -55,16 +55,11 @@ int main() {
     double result;
     result = 3.1415 + 'A';  // Advertencia: conversión implícita de 'char' a 'double'
 
-    while (1) {
-        int m = 5;
-        break;
-    }
-
     int n;
     // Advertencia: 'n' no está inicializada
 
-    imprimeMensaje();  // Llamada a función antes de declararla
-    // int resultado = funcionSuma(a, b);  // Error: llamada a función antes de definirla
+    // imprimeMensaje();  // Llamada a función antes de declararla
+    int resultado = funcionSuma(a, b);  // Error: llamada a función antes de definirla
 
     return 0;
 }
