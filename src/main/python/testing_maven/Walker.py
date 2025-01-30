@@ -74,11 +74,11 @@ class Walker(compiladoresVisitor):
             if not ctx.getChild(2).function_call():
                 # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
                 if self.temporary:
-                    self.file.write(f"{id} = {self.temporary.pop()}\n\n")
+                    self.file.write(f"\n{id} = {self.temporary.pop()}\n")
                     # self.temporales.clear()
                 # De lo contrario la variable solo almacena un factor
                 else:
-                    self.file.write(f"{id} = {self.operating1}\n\n")
+                    self.file.write(f"\n{id} = {self.operating1}\n")
 
                 # Reseteo los los elementos para las operaciones
                 self.operating1 = None
@@ -87,7 +87,8 @@ class Walker(compiladoresVisitor):
 
         # De lo contrario solo se declaro la variable vacia
         else:
-            self.file.write(f'Declaracion de la variable {_id}\n')
+            print(f'Declaracion de la variable {_id}\n') # Linea para depuracion
+            # self.file.write(f'Declaracion de la variable {_id}\n')
         
         if ctx.getChild(3).getChildCount() != 0:
             self.visitVarlist(ctx.getChild(3))
@@ -146,20 +147,27 @@ class Walker(compiladoresVisitor):
         # Guardo el valor del identificador de la declaracion
         _id = ctx.getChild(0).getText()
 
-        self.visitOpal(ctx.getChild(2))
+        # Si hijo 2 tiene menos de 2 hijos es Opal
+        if ctx.getChild(2).getChildCount() <= 2:
+            self.visitOpal(ctx.getChild(2))
 
-        # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
-        if self.temporary:
-            self.file.write(f"{_id} = {self.temporary.pop()}\n\n")
-        
-        # De lo contrario la variable solo almacena un factor
+            # Si hay un temporal, es el ultimo paso de la asignacion, es decir, hubo operaciones dentro de la asignacion
+            if self.temporary:
+                self.file.write(f"{id} = {self.temporary.pop()}\n\n")
+            # De la contrario la variable solo almacena un factor
+            else:
+                self.file.write(f"{id} = {self.operating1}\n\n")
+
+            # Reseteo los los elementos para las operaciones
+            self.operating1 = None
+            self.operating2 = None
+            self.operator  = None
+
+        # De lo contrario se trata de una llamada de una funcion
         else:
-            self.file.write(f"{_id} = {self.operating1}\n\n")
+            self.visitFunction_call(ctx.getChild(2))
+            self.file.write(f'pop {_id}\n')
 
-        # Reseteo los los elementos para las operaciones
-        self.operating1 = None
-        self.operating2 = None
-        self.operator  = None
 
     # Visit a parse tree produced by compiladoresParser#opal.
     def visitOpal(self, ctx:compiladoresParser.OpalContext):
@@ -671,7 +679,11 @@ class Walker(compiladoresVisitor):
         self.labels.append(self.LabelsGenerator.get_label())
 
         # Escribo en el archivo el salto condicional del bucle While
-        self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n')
+        if self.temporary:
+            self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n\n')
+        else:
+            # Bucles infinitos
+            self.file.write(f'{self.bneq} {self.operating1}, {self.labels[-1]}\n\n')
 
         # Visito la Regla Instruccion, para escribir en el archivo la instruccion del bucle While
         self.visitInstruction(ctx.getChild(4))
@@ -680,7 +692,7 @@ class Walker(compiladoresVisitor):
         self.file.write(f'{self.b} {self.labels.pop(0)}\n')
 
         # Escribo en el archivo la etiqueta para salir del bucle while
-        self.file.write(f'{self.label} {self.labels.pop(0)}\n')
+        self.file.write(f'{self.label} {self.labels.pop(0)}\n\n')
 
     # Visit a parse tree produced by compiladoresParser#ifor.
     def visitFori(self, ctx:compiladoresParser.ForiContext):
@@ -690,13 +702,13 @@ class Walker(compiladoresVisitor):
             self.labels.append(self.LabelsGenerator.get_label())
 
             # Escribo en el archivo la etiqueta para iniciar el bucle for
-            self.file.write(f'{self.label} {self.labels[-1]}\n')
+            self.file.write(f'{self.label} {self.labels[-1]}\n\n')
 
             # Visito la Regla Instruccion, para escribir en el archivo la instruccion del bucle While
             self.visitInstruction(ctx.getChild(8))
 
             # Escribo en el archivo el salto al comienzo del bucle for
-            self.file.write(f'{self.b} {self.labels.pop(0)}\n')
+            self.file.write(f'{self.b} {self.labels.pop(0)}\n\n')
 
         # Caso para bucle for con condicion
         else:
@@ -716,7 +728,7 @@ class Walker(compiladoresVisitor):
             self.labels.append(self.LabelsGenerator.get_label())
 
             # Escribo en el archivo el salto condicional del bucle for
-            self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n')
+            self.file.write(f'{self.bneq} {self.temporary.pop()}, {self.labels[-1]}\n\n')
 
             # Visito la Regla Instruccion, para escribir en el archivo la instruccion del bucle While
             self.visitInstruction(ctx.getChild(8))
@@ -728,7 +740,7 @@ class Walker(compiladoresVisitor):
             self.file.write(f'{self.b} {self.labels.pop(0)}\n')
 
             # Escribo en el archivo la etiqueta para salir del bucle while
-            self.file.write(f'{self.label} {self.labels.pop(0)}\n')
+            self.file.write(f'{self.label} {self.labels.pop(0)}\n\n')
 
     # Visit a parse tree produced by compiladoresParser#iter.
     def visitIter(self, ctx:compiladoresParser.IterContext):
@@ -827,24 +839,32 @@ class Walker(compiladoresVisitor):
 
     # Visit a parse tree produced by compiladoresParser#funcion.
     def visitFunction(self, ctx:compiladoresParser.FunctionContext):
+        # Si no es la funcion principal main
         if ctx.getChild(1).getText() != 'main':
-            # self.file.write('-------- FUNCION --------\n')
 
             # Escribo en el archivo la etiqueta de salto hacia la funcion
             self.file.write(f'{self.label} {self.labels.pop(0)}\n')
 
             self.file.write(f'pop {self.labels[-1]}\n')
 
-            """ Evaluar cuando no tiene argumentos """
-            # Visito la Regla Argunementos para obtener los argumentos de la funcion
-            self.visitArguments(ctx.getChild(3))
+            # Si la funcion tiene argumentos
+            if ctx.getChild(3).getChildCount() != 0:                
+                # Visito la Regla Argumentos para obtener los argumentos de la funcion
+                self.visitArgumentos(ctx.getChild(3))
 
             self.visitBlock(ctx.getChild(5))
 
-            self.file.write(f'push {self.temporary.pop()}\n')
+            # Si hay temporales
+            if self.temporary:
+                self.file.write(f'push {self.temporary.pop()}\n')
+            else:
+                # Solo escribo en el archivo si operando1 no es None
+                if self.operating1:
+                    self.file.write(f'push {self.operating1}\n')
 
             self.file.write(f'{self.b} {self.labels.pop()}\n')
 
+        # En caso contrario, estamos en main
         else:
             self.visitBlock(ctx.getChild(5))
 
@@ -854,11 +874,12 @@ class Walker(compiladoresVisitor):
         if ctx.getChildCount() == 0:
             return
         
-        self.file.write(f'pop {ctx.getChild(1).getText()}\n')
-
+        # Si la lista de argumentos tiene mas argumentos
         if ctx.getChild(2).getChildCount() != 0:
             self.visitArguments_list(ctx.getChild(2))
 
+        # Popeo el argumento actual al ultimo
+        self.file.write(f'pop {ctx.getChild(1).getText()}\n')
     
     # Visit a parse tree produced by compiladoresParser#lista_argumentos.
     def visitArguments_list(self, ctx:compiladoresParser.Arguments_listContext):
@@ -866,28 +887,29 @@ class Walker(compiladoresVisitor):
         if ctx.getChildCount() == 0:
             return
 
-        self.file.write(f'pop {ctx.getChild(2).getText()}\n')
-
+        # Si la lista de argumentos tiene mas argumentos
         if ctx.getChild(3).getChildCount() != 0:
             self.visitArguments_list(ctx.getChild(3))
 
-    # Visit a parse tree produced by compiladoresParser#llamada_funcion_valor.
-    def visitFunction_call_value(self, ctx:compiladoresParser.Function_call_valueContext):
-        self.visitFunction_call(ctx.getChild(2))
-        self.file.write(f'pop {ctx.getChild(0).getText()}\n')
+        # Popeo el argumento actual al ultimo
+        self.file.write(f'pop {ctx.getChild(2).getText()}\n')
+
 
     # Visit a parse tree produced by compiladoresParser#llamada_funcion.
     def visitFunction_call(self, ctx:compiladoresParser.Function_callContext):
-        # self.file.write('-------- LLAMADA A FUNCION --------\n')
-
+        # Obtiene los argumentos de la funcion
         self.visitArguments_to_function(ctx.getChild(2))
 
+        # Genera una etiqueta
         self.labels.append(self.LabelsGenerator.get_label())
 
+        # Escribe en el archivo el salto de retorno cuando finaliza la funcion
         self.file.write(f'push {self.labels[-1]}\n')
 
+        # Escribe en el archivo el salto a la funcion
         self.file.write(f'{self.b} {self.labels[-2]}\n')
 
+        # Escribe en el archivo el salto a la etiqueta de retorno
         self.file.write(f'{self.label} {self.labels[-1]}\n')
 
     # Visit a parse tree produced by compiladoresParser#argumentos_a_funcion.
@@ -896,14 +918,16 @@ class Walker(compiladoresVisitor):
         if ctx.getChildCount() == 0:
             return
         
-        self.isFunction = True
+        self.isFunction = True #Indica que estamos dentro de una funcion
 
+        # Visita Oplogicos para obtener el primer o unico argumento de la funcion
         self.visitOplogic(ctx.getChild(0))
 
+        # Si hay mas argumentos, los visita para obtenerlos
         if ctx.getChild(1).getChildCount() != 0:
             self.visitArguments_to_function_list(ctx.getChild(1))
 
-        self.isFunction = False
+        self.isFunction = False # Indica que a partir de ahora estamos fuera de una funcion
 
     # Visit a parse tree produced by compiladoresParser#lista_argumentos_a_funcion.
     def visitArguments_to_function_list(self, ctx:compiladoresParser.Arguments_to_function_listContext):
@@ -911,8 +935,10 @@ class Walker(compiladoresVisitor):
         if ctx.getChildCount() == 0:
             return
         
+        # Visita Oplogicos para obtener el argumento actual
         self.visitOplogic(ctx.getChild(1))
 
+        # Si hay mas argumentos, los visita para obtenerlos
         if ctx.getChild(2).getChildCount() != 0:
             self.visitArguments_to_function_list(ctx.getChild(2))
 
