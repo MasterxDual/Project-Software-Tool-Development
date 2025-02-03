@@ -32,6 +32,10 @@ class Walker(compiladoresVisitor):
         self.isAdder                = False
         self.isFunction             = False
 
+        self.labelFunction         = {}
+        self.invokedFunction         = {}
+        self.isReturn                = False
+
         # Constantes Codigo Intermedio de Tres Direcciones
         self.label   = 'label'
         self.b          = 'jmp'
@@ -48,19 +52,12 @@ class Walker(compiladoresVisitor):
         print("-- Codigo Intermedio generado Correctamente --")
         print("-" + "=" * 30 + "-")
 
-    # # Visit a parse tree produced by compiladoresParser#instrucciones.
-    # def visitInstructiones(self, ctx:compiladoresParser.InstruccionesContext):
-    #     return self.visitChildren(ctx)
+    # Visit a parse tree produced by compiladoresParser#retornar.
+    def visitReturn(self, ctx:compiladoresParser.ReturningContext):
+        if ctx.getChildCount() == 2:
+            self.isReturn = True
 
-
-    # # Visit a parse tree produced by compiladoresParser#instruccion.
-    # def visitInstruccion(self, ctx:compiladoresParser.InstruccionContext):
-    #     return self.visitChildren(ctx)
-
-
-    # # Visit a parse tree produced by compiladoresParser#bloque.
-    # def visitBloque(self, ctx:compiladoresParser.BloqueContext):
-    #     return self.visitChildren(ctx)
+            self.visitOplogic(ctx.getChild(1))
 
     # Visit a parse tree produced by compiladoresParser#declaration.
     def visitDeclaration(self, ctx:compiladoresParser.DeclarationContext):
@@ -835,17 +832,45 @@ class Walker(compiladoresVisitor):
     # Visit a parse tree produced by compiladoresParser#prototipo_funcion.
     def visitFunction_prototype(self, ctx:compiladoresParser.Function_prototypeContext):
         # Genero la etiqueta de salto hacia la funcion
-        self.etiquetas.append(self.generadorDeEtiquetas.getEtiqueta())
+        self.labels.append(self.LabelsGenerator.get_label())
+
+        function_name = ctx.getChild(1).getText().strip()
+
+        # Vinculo el nombre de la funcion a su respectiva etiqueta
+        self.labelFunction[function_name] = self.labels[-1]
+
 
     # Visit a parse tree produced by compiladoresParser#funcion.
     def visitFunction(self, ctx:compiladoresParser.FunctionContext):
         # Si no es la funcion principal main
         if ctx.getChild(1).getText() != 'main':
 
-            # Escribo en el archivo la etiqueta de salto hacia la funcion
-            self.file.write(f'{self.label} {self.labels.pop(0)}\n')
+            function_name = ctx.getChild(1).getText().strip()
 
-            self.file.write(f'pop {self.labels[-1]}\n')
+            there_is_prototype = False
+
+            # Busco la etiqueta asociada a la funcion
+            for ii, label in enumerate(self.labels):
+                if label == self.labelFunction[function_name]:
+                    # Escribo en el archivo la etiqueta de salto hacia la funcion
+                    self.file.write(f'\n{self.label} {self.labels.pop(ii)}\n')
+
+                    # Si ecuntra la eiqueta significa que la funciion fue declarada 
+                    there_is_prototype = True
+                    break
+
+            # Si no encuentra la etiqueta significa que la funcion no fue declarada
+            if not there_is_prototype:
+                # genera una etiqueta para la funcion
+                self.labels.append(self.LabelsGenerator.get_label())
+
+                # Escribe en el archivo la etiqueta de la funcion
+                self.file.write(f'\n{self.label} {self.labels.pop()}\n')
+
+            # Si la funcion fue invocada previamente
+            if function_name in self.invokedFunction: 
+                self.file.write(f'pop {self.labels[-1]}\n')
+
 
             # Si la funcion tiene argumentos
             if ctx.getChild(3).getChildCount() != 0:                
@@ -854,19 +879,28 @@ class Walker(compiladoresVisitor):
 
             self.visitBlock(ctx.getChild(5))
 
-            # Si hay temporales
-            if self.temporary:
-                self.file.write(f'push {self.temporary.pop()}\n')
-            else:
-                # Solo escribo en el archivo si operando1 no es None
-                if self.operating1:
-                    self.file.write(f'push {self.operating1}\n')
+            # Si la funcion tiene que retornar un valor
+            if self.isReturn:
+                # Si hay temporales
+                if self.temporary:
+                    self.file.write(f'push {self.temporary.pop()}\n')
+                else:
+                    # Solo escribo en el archivo si operando1 no es None
+                    if self.operating1:
+                        self.file.write(f'push {self.operating1}\n')
 
-            self.file.write(f'{self.b} {self.labels.pop()}\n')
+                self.isReturn = False
+
+            if function_name in self.invokedFunction: 
+                self.file.write(f'{self.b} {self.labels.pop()}\n')
 
         # En caso contrario, estamos en main
         else:
             self.visitBlock(ctx.getChild(5))
+
+            if self.isReturn: self.isReturn = False
+
+
 
     # Visit a parse tree produced by compiladoresParser#argumentos.
     def visitArguments(self, ctx:compiladoresParser.ArgumentsContext):
@@ -897,6 +931,8 @@ class Walker(compiladoresVisitor):
 
     # Visit a parse tree produced by compiladoresParser#llamada_funcion.
     def visitFunction_call(self, ctx:compiladoresParser.Function_callContext):
+        function_name = ctx.getChild(0).getText().strip()
+
         # Obtiene los argumentos de la funcion
         self.visitArguments_to_function(ctx.getChild(2))
 
@@ -907,7 +943,10 @@ class Walker(compiladoresVisitor):
         self.file.write(f'push {self.labels[-1]}\n')
 
         # Escribe en el archivo el salto a la funcion
-        self.file.write(f'{self.b} {self.labels[-2]}\n')
+        self.file.write(f'{self.b} {self.labelFunction[function_name]}\n')
+
+        # Vinculo la funcion invocada a la etiqueta donde debe retornar
+        self.invokedFunction[function_name] = self.labels[-1]
 
         # Escribe en el archivo el salto a la etiqueta de retorno
         self.file.write(f'{self.label} {self.labels[-1]}\n')

@@ -233,7 +233,9 @@ iter: ID INC
     |
     ;
 
-returning: RETURN oplogic;
+returning: RETURN oplogic
+        | 
+        ;
 
 function_prototype: return_value ID LPAR arguments RPAR;
 
