@@ -2,7 +2,7 @@ from typing import Dict
 from Id import Id
 
 class Context:
-    def __init__(self, name="Global"):
+    def __init__(self, name):
         self.tabla: Dict[str, Id] = {}
         self.name = name
 

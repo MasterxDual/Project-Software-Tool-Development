@@ -10,7 +10,7 @@ int main() {
     // int array[5];
 
     // Errores Léxicos
-    // int €valor = 10;  // Error: carácter inválido €
+    int €valor = 10;  // Error: carácter inválido €
 
     // Errores Sintácticos
     int p = 0  // Error: falta el punto y coma
@@ -19,7 +19,7 @@ int main() {
 
     // Errores Semánticos
     a = b;  
-    c = d;  // Error: 'd' no está declarada
+    // c = d;  // Error: 'd' no está declarada
 
     // Errores de Ámbito
     // {
@@ -28,13 +28,21 @@ int main() {
     // e = 20;  // Error: uso de 'e' fuera de su ámbito
 
     // Errores de Tipo
-    x = a + 'c';  // Error: tipo incompatible de operación
-    a = b / 0;  // Advertencia: división por cero
+    // x = a + 'c';  // Error: tipo incompatible de operación
+    // a = b / 0;  // Advertencia: división por cero
 
     // Advertencias
-    if (b = 10) {  // Advertencia: uso de '=' en lugar de '=='
-        // b es igual a 10
+    // if (b = 10) {  // Advertencia: uso de '=' en lugar de '=='
+    //     // b es igual a 10
+    // }
+
+    if (b = 10) {
+    
     }
+
+    {
+        int y = 10;
+    
 
     // for (int i = 0; i < 10; i++) {
     //     int j = i * 2;
@@ -53,7 +61,7 @@ int main() {
 
     // Conversiones de Tipo
     double result;
-    result = 3.1415 + 'A';  // Advertencia: conversión implícita de 'char' a 'double'
+    // result = 3.1415 + 'A';  // Advertencia: conversión implícita de 'char' a 'double'
 
     int n;
     // Advertencia: 'n' no está inicializada
